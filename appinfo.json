@@ -1,0 +1,11 @@
+{
+  "id": "com.elvanoq.play",
+  "version": "0.1.0",
+  "vendor": "ELVANOQ",
+  "type": "web",
+  "main": "index.html",
+  "title": "ELVANOQ Play",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "disableBackHistoryAPI": true
+}
