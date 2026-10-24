@@ -2,6 +2,9 @@
 (function (root) {
   'use strict';
   function text(value) { return typeof value === 'string' && value.trim() ? value.trim() : null; }
+  function isHttpUrl(value) {
+    try { var parsed = new URL(value); return parsed.protocol === 'http:' || parsed.protocol === 'https:'; } catch (_) { return false; }
+  }
   function allowed(body) {
     var license = body && body.license || {};
     var codeAccess = body && body.code_access;
@@ -10,8 +13,8 @@
   function normalize(playlist) {
     if (!playlist || (playlist.kind !== 'm3u' && playlist.kind !== 'xtream')) return null;
     var credentials = playlist.credentials || {};
-    if (playlist.kind === 'm3u' && !text(credentials.url)) return null;
-    if (playlist.kind === 'xtream' && (!text(credentials.host) || !text(credentials.username) || !text(credentials.password))) return null;
+    if (playlist.kind === 'm3u' && !isHttpUrl(text(credentials.url))) return null;
+    if (playlist.kind === 'xtream' && (!isHttpUrl(text(credentials.host)) || !text(credentials.username) || !text(credentials.password))) return null;
     return {
       name: text(playlist.name) || 'Lista do Portal',
       sourceType: playlist.kind,
@@ -29,7 +32,7 @@
     if (index === -1) items.push(entry); else items[index] = Object.assign({}, items[index], entry);
     return { items: items, changed: true, invalid: false, entry: entry };
   }
-  var api = { allowed: allowed, normalize: normalize, merge: merge };
+  var api = { allowed: allowed, normalize: normalize, merge: merge, isHttpUrl: isHttpUrl };
   root.ELVANOQPlaylist = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 }(typeof window !== 'undefined' ? window : globalThis));
