@@ -25,4 +25,9 @@ assert.equal(merged.items.length, 2, 'updates Portal entry without duplication')
 assert.equal(merged.items[1].sourceType, 'xtream');
 assert.equal(rules.merge(local, null, 'a'.repeat(64)).items.length, 1, 'null playlist never deletes local data');
 assert.equal(rules.normalize({ kind: 'm3u', credentials: {} }), null);
+const parsed = rules.parseM3u('#EXTM3U\n#EXTINF:-1 group-title="Notícias",Canal 1\nhttp://provider.example:8080/live/1.ts');
+assert.equal(parsed.length, 1);
+assert.equal(parsed[0].streamUrl, 'http://provider.example:8080/live/1.ts');
+assert.equal(rules.buildXtreamApiUrl('http://provider.example:8080/', 'user', 'secret', 'get_live_streams').includes('http://provider.example:8080/player_api.php'), true);
+assert.equal(rules.xtreamLiveStreams('https://provider.example:8443', 'user', 'secret', [{ stream_id: 9, name: 'Canal 9', container_extension: 'm3u8' }])[0].streamUrl, 'https://provider.example:8443/live/user/secret/9.m3u8');
 console.log('playlist sync rules: OK');
