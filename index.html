@@ -9,17 +9,40 @@
   </head>
   <body>
     <main class="screen" aria-live="polite">
-      <section class="brand" aria-label="ELVANOQ Play"><div class="mark" aria-hidden="true">E</div><span>ELVANOQ</span><small>PLAY</small></section>
+      <section class="brand" aria-label="ELVANOQ Play">
+        <div class="mark" aria-hidden="true">E</div>
+        <span>ELVANOQ</span><small>PLAY</small>
+      </section>
       <section class="card" aria-labelledby="title">
-        <p class="eyebrow">VERSÃO PARA LG webOS</p><h1 id="title">Ative sua TV</h1>
+        <p class="eyebrow">VERSÃO PARA LG webOS</p>
+        <h1 id="title">Ative sua TV</h1>
         <p class="lead">Vincule esta TV à sua conta pelo Portal ELVANOQ para usar suas listas autorizadas.</p>
-        <div id="identity" class="identity pending"><span class="label">IDENTIFICAÇÃO DA TV</span><strong id="device-id">Preparando identificação…</strong><span id="device-key" class="muted"></span></div>
+        <div id="identity" class="identity pending">
+          <span class="label">IDENTIFICAÇÃO DA TV</span>
+          <strong id="device-id">Preparando identificação…</strong>
+          <span id="device-key" class="muted"></span>
+          <button id="toggle-key-button" class="inline-button" type="button" hidden>Ocultar chave</button>
+        </div>
         <button id="consent-button" class="button primary" type="button">Continuar e gerar identificação</button>
         <p id="consent-copy" class="notice">Ao continuar, você autoriza o uso da identificação desta TV exclusivamente para vinculação, licença e suporte do ELVANOQ Play.</p>
         <div id="status" class="status" role="status">Aguardando autorização.</div>
-        <div class="actions"><button id="check-button" class="button secondary" type="button" disabled>Verificar acesso</button><button id="portal-button" class="link-button" type="button">Abrir Portal</button></div>
+        <p class="portal-help">No portal, selecione <strong>TV LG webOS</strong> e informe o código e a chave exibidos nesta tela.</p>
+        <p class="portal-address">elvanoqplay.app/adicionar-lista/</p>
+        <div class="actions">
+          <button id="check-button" class="button secondary" type="button" disabled>Verificar acesso</button>
+          <button id="sync-button" class="button secondary" type="button" disabled>Buscar lista do Portal</button>
+          <button id="portal-button" class="link-button" type="button">Abrir Portal</button>
+        </div>
       </section>
-      <footer>ELVANOQ Play · LG webOS · <span id="version">0.1.0</span></footer>
-    </main><script src="app.js"></script>
+      <section class="card lists-card" aria-labelledby="lists-title">
+        <p class="eyebrow">LISTAS</p>
+        <h2 id="lists-title">Listas salvas</h2>
+        <p id="list-summary" class="lead compact">Nenhuma lista sincronizada do Portal.</p>
+        <button id="settings-sync-button" class="button secondary" type="button" disabled>Sincronizar lista</button>
+      </section>
+      <footer>ELVANOQ Play · LG webOS · <span id="version">0.2.0</span></footer>
+    </main>
+    <script src="playlist-utils.js"></script>
+    <script src="app.js"></script>
   </body>
 </html>
