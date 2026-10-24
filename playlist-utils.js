@@ -49,7 +49,16 @@
     if (!Array.isArray(body)) return []; var base = String(host || '').replace(/\/+$/, '');
     return body.filter(function (item) { return item && item.stream_id != null; }).map(function (item) { return { id: 'xtream:' + item.stream_id, name: text(item.name) || 'Canal', group: text(item.category_name) || 'Ao vivo', streamUrl: base + '/live/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + encodeURIComponent(item.stream_id) + '.' + (text(item.container_extension) || 'ts') }; });
   }
-  var api = { allowed: allowed, normalize: normalize, merge: merge, isHttpUrl: isHttpUrl, parseM3u: parseM3u, buildXtreamApiUrl: buildXtreamApiUrl, xtreamLiveStreams: xtreamLiveStreams };
+  function xtreamMovies(host, username, password, body) {
+    if (!Array.isArray(body)) return []; var base = String(host || '').replace(/\/+$/, '');
+    return body.filter(function (item) { return item && item.stream_id != null; }).map(function (item) { return { id: 'movie:' + item.stream_id, type: 'movie', title: text(item.name) || 'Filme', group: text(item.category_name) || 'Filmes', poster: text(item.stream_icon), rating: Number(item.rating) || 0, year: Number(item.year) || 0, description: text(item.plot) || 'Conteúdo disponível na sua lista.', streamUrl: base + '/movie/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + encodeURIComponent(item.stream_id) + '.' + (text(item.container_extension) || 'mp4') }; });
+  }
+  function xtreamSeries(body) {
+    if (!Array.isArray(body)) return [];
+    return body.filter(function (item) { return item && item.series_id != null; }).map(function (item) { return { id: 'series:' + item.series_id, seriesId: item.series_id, type: 'series', title: text(item.name) || 'Série', group: text(item.category_name) || 'Séries', poster: text(item.cover), rating: Number(item.rating) || 0, year: Number(item.year) || 0, description: text(item.plot) || 'Série disponível na sua lista.' }; });
+  }
+  function xtreamEpisodeUrl(host, username, password, extension, id) { var base = String(host || '').replace(/\/+$/, ''); return base + '/series/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + encodeURIComponent(id) + '.' + (text(extension) || 'mp4'); }
+  var api = { allowed: allowed, normalize: normalize, merge: merge, isHttpUrl: isHttpUrl, parseM3u: parseM3u, buildXtreamApiUrl: buildXtreamApiUrl, xtreamLiveStreams: xtreamLiveStreams, xtreamMovies: xtreamMovies, xtreamSeries: xtreamSeries, xtreamEpisodeUrl: xtreamEpisodeUrl };
   root.ELVANOQPlaylist = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 }(typeof window !== 'undefined' ? window : globalThis));
