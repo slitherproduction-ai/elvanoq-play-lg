@@ -12,7 +12,22 @@ Repositório independente do aplicativo Android. Ele contém exclusivamente o ap
 
 ## Limites desta entrega
 
-Ainda não inclui login Xtream/M3U, sincronização de listas, catálogo ou player. A ativação webOS usa uma identidade de plataforma própria; o Portal armazena somente o hash do identificador LG e preserva o fluxo legado do Android sem alterações.
+## Sincronização de listas do Portal
+
+A partir da versão 0.2.0, a TV consulta `webos-playlist-sync` usando somente o hash SHA-256 completo da identidade LG e a chave local do dispositivo. O LGUDID nunca sai da TV em texto puro e não é convertido em MAC.
+
+- A lista do Portal é atualizada pelo identificador `portal-webos:<hash>` sem duplicar uma sincronização anterior.
+- Listas locais de outras origens, favoritos e histórico não são removidos.
+- M3U preserva `credentials.url`; Xtream preserva `host`, `username` e `password`, inclusive protocolo e porta fornecidos.
+- O app aceita a lista somente quando as decisões retornadas pelo Portal permitem o acesso (`active`, `license.can_play` e, quando presente, `code_access.can_connect`).
+- Ausência de lista nunca equivale a exclusão local. Falhas de rede e limite de requisições também preservam os dados locais.
+
+Para os testes sem empacotar o app:
+
+```sh
+node tests/playlist-sync.test.cjs
+node scripts/validate-webos.mjs
+```
 
 ## Empacotamento posterior
 
