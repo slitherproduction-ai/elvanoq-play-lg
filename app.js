@@ -58,7 +58,7 @@
     } finally { clearTimeout(timeout); }
   }
   function applyServerCode(body) { var code = text(body && body.server_code); if (code && identity) { identity.serverCode = code; save(identity); displayIdentity(identity); } }
-  async function registerIdentity() { var registration = await request('webos-device-register', { device_id: identity.deviceId, device_key: identity.key, app_version: '0.2.0' }); if (registration.status >= 400) throw new Error('registration'); identity.portalRegistered = registration.body && registration.body.registered !== false; applyServerCode(registration.body); save(identity); displayIdentity(identity); return registration.body; }
+  async function registerIdentity() { var registration = await request('webos-device-register', { device_id: identity.deviceId, device_key: identity.key, app_version: '0.2.1' }); if (registration.status >= 400) throw new Error('registration'); identity.portalRegistered = registration.body && registration.body.registered !== false; applyServerCode(registration.body); save(identity); displayIdentity(identity); return registration.body; }
   async function activateIdentity() {
     $('consent-button').disabled = true; setStatus('Preparando a identificação segura da TV…');
     var udid = await lgUdid(); identity = await toPortalIdentity(udid); save(identity); displayIdentity(identity);
@@ -72,7 +72,7 @@
   async function checkAccess() {
     if (!identity) return; $('check-button').disabled = true; setStatus('Consultando sua licença…');
     try {
-      var result = await request('webos-license-status', { device_id: identity.deviceId, device_key: identity.key, app_version: '0.2.0' });
+      var result = await request('webos-license-status', { device_id: identity.deviceId, device_key: identity.key, app_version: '0.2.1' });
       var body = result.body || {}; applyServerCode(body);
       if (window.ELVANOQPlaylist.allowed(body)) setStatus('Acesso liberado.', 'granted'); else setStatus(text(body.message) || 'Esta TV não possui uma licença ativa para reprodução.', 'error');
     } catch (_) { setStatus('Não foi possível consultar a licença agora. Verifique sua conexão e tente novamente.', 'error'); }
