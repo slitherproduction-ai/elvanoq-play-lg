@@ -12,6 +12,10 @@ Repositório independente do aplicativo Android. Ele contém exclusivamente o ap
 
 ## Limites desta entrega
 
+## Catálogo e reprodução
+
+A versão `0.3.0` carrega o catálogo ao vivo da lista autorizada e usa o elemento de vídeo nativo do webOS para reprodução. M3U e Xtream preservam o protocolo e a porta recebidos; URLs e credenciais não são exibidas no catálogo nem registradas pelo app. Cada carregamento e reprodução revalida a licença no Portal.
+
 ## Sincronização de listas do Portal
 
 A partir da versão 0.2.0, a TV consulta `webos-playlist-sync` usando somente o hash SHA-256 completo da identidade LG e a chave local do dispositivo. O LGUDID nunca sai da TV em texto puro e não é convertido em MAC.
