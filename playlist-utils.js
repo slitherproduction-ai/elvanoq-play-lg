@@ -32,7 +32,24 @@
     if (index === -1) items.push(entry); else items[index] = Object.assign({}, items[index], entry);
     return { items: items, changed: true, invalid: false, entry: entry };
   }
-  var api = { allowed: allowed, normalize: normalize, merge: merge, isHttpUrl: isHttpUrl };
+  function parseM3u(source) {
+    var lines = String(source || '').replace(/\r/g, '').split('\n'); var entries = []; var pending = null;
+    lines.forEach(function (line) {
+      line = line.trim(); if (!line) return;
+      if (line.indexOf('#EXTINF:') === 0) { var name = line.split(',').slice(1).join(',').trim() || 'Canal'; var group = (line.match(/group-title="([^"]*)"/) || [])[1] || 'Ao vivo'; pending = { name: name, group: group }; return; }
+      if (pending && isHttpUrl(line)) { entries.push({ id: 'm3u:' + entries.length, name: pending.name, group: pending.group, streamUrl: line }); pending = null; }
+    });
+    return entries;
+  }
+  function buildXtreamApiUrl(host, username, password, action) {
+    var base = String(host || '').replace(/\/+$/, ''); if (!isHttpUrl(base)) return null;
+    var url = new URL(base + '/player_api.php'); url.searchParams.set('username', username); url.searchParams.set('password', password); if (action) url.searchParams.set('action', action); return url.toString();
+  }
+  function xtreamLiveStreams(host, username, password, body) {
+    if (!Array.isArray(body)) return []; var base = String(host || '').replace(/\/+$/, '');
+    return body.filter(function (item) { return item && item.stream_id != null; }).map(function (item) { return { id: 'xtream:' + item.stream_id, name: text(item.name) || 'Canal', group: text(item.category_name) || 'Ao vivo', streamUrl: base + '/live/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + encodeURIComponent(item.stream_id) + '.' + (text(item.container_extension) || 'ts') }; });
+  }
+  var api = { allowed: allowed, normalize: normalize, merge: merge, isHttpUrl: isHttpUrl, parseM3u: parseM3u, buildXtreamApiUrl: buildXtreamApiUrl, xtreamLiveStreams: xtreamLiveStreams };
   root.ELVANOQPlaylist = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 }(typeof window !== 'undefined' ? window : globalThis));
