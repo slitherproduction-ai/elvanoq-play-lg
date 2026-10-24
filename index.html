@@ -38,9 +38,24 @@
         <p class="eyebrow">LISTAS</p>
         <h2 id="lists-title">Listas salvas</h2>
         <p id="list-summary" class="lead compact">Nenhuma lista sincronizada do Portal.</p>
-        <button id="settings-sync-button" class="button secondary" type="button" disabled>Sincronizar lista</button>
+        <div class="actions compact-actions">
+          <button id="settings-sync-button" class="button secondary" type="button" disabled>Sincronizar lista</button>
+          <button id="catalog-button" class="button secondary" type="button" disabled>Carregar canais</button>
+        </div>
       </section>
-      <footer>ELVANOQ Play · LG webOS · <span id="version">0.2.1</span></footer>
+      <section id="catalog-card" class="card catalog-card" aria-labelledby="catalog-title" hidden>
+        <p class="eyebrow">CATÁLOGO DA LISTA</p>
+        <h2 id="catalog-title">Canais</h2>
+        <p id="catalog-summary" class="lead compact"></p>
+        <div id="catalog-list" class="catalog-list" role="list"></div>
+      </section>
+      <section id="player-card" class="card player-card" aria-labelledby="player-title" hidden>
+        <p class="eyebrow">REPRODUÇÃO</p>
+        <h2 id="player-title">Canal</h2>
+        <video id="player" class="player" controls playsinline></video>
+        <button id="stop-button" class="button secondary" type="button">Parar reprodução</button>
+      </section>
+      <footer>ELVANOQ Play · LG webOS · <span id="version">0.3.0</span></footer>
     </main>
     <script src="playlist-utils.js"></script>
     <script src="app.js"></script>
