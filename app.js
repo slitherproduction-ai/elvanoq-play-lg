@@ -8,6 +8,7 @@
   var PLAYLIST_STORAGE_KEY = 'elvanoq-lg-playlists-v1';
   var identity = null;
   var syncInFlight = false;
+  var catalogInFlight = false;
   var retryAt = 0;
   var keyVisible = true;
   var $ = function (id) { return document.getElementById(id); };
@@ -27,12 +28,13 @@
   function setStatus(message, kind) { var el = $('status'); el.textContent = message; el.className = 'status visible ' + (kind || ''); }
   function visualCode(item) { return text(item.serverCode) || ('LG-' + item.deviceId.slice(0, 12).toUpperCase()); }
   function maskedKey(key) { return '•'.repeat(Math.max(4, key.length)); }
-  function displayIdentity(item) { $('identity').className = 'identity'; $('device-id').textContent = visualCode(item); $('device-key').textContent = 'Chave do dispositivo: ' + (keyVisible ? item.key : maskedKey(item.key)); $('toggle-key-button').hidden = false; $('toggle-key-button').textContent = keyVisible ? 'Ocultar chave' : 'Mostrar chave'; $('check-button').disabled = false; var canSync = item.portalRegistered === true && Date.now() >= retryAt; $('sync-button').disabled = !canSync; $('settings-sync-button').disabled = !canSync; }
+  function displayIdentity(item) { $('identity').className = 'identity'; $('device-id').textContent = visualCode(item); $('device-key').textContent = 'Chave do dispositivo: ' + (keyVisible ? item.key : maskedKey(item.key)); $('toggle-key-button').hidden = false; $('toggle-key-button').textContent = keyVisible ? 'Ocultar chave' : 'Mostrar chave'; $('check-button').disabled = false; var canSync = item.portalRegistered === true && Date.now() >= retryAt; $('sync-button').disabled = !canSync; $('settings-sync-button').disabled = !canSync; $('catalog-button').disabled = !canSync || !portalPlaylist(); }
   function save(item) { localStorage.setItem(STORAGE_KEY, JSON.stringify(item)); }
   function read() { try { var value = JSON.parse(localStorage.getItem(STORAGE_KEY)); return value && /^[a-f0-9]{64}$/i.test(value.deviceId) && text(value.key) ? value : null; } catch (_) { return null; } }
   function readPlaylists() { try { var value = JSON.parse(localStorage.getItem(PLAYLIST_STORAGE_KEY)); return Array.isArray(value) ? value : []; } catch (_) { return []; } }
   function savePlaylists(items) { localStorage.setItem(PLAYLIST_STORAGE_KEY, JSON.stringify(items)); }
-  function renderLists() { var items = readPlaylists(); var portal = items.filter(function (item) { return item && item.origin === 'portal-webos'; }); $('list-summary').textContent = portal.length ? portal.map(function (item) { return item.name + ' · ' + item.sourceType.toUpperCase(); }).join(' · ') : 'Nenhuma lista sincronizada do Portal.'; }
+  function portalPlaylist() { return readPlaylists().find(function (item) { return item && item.origin === 'portal-webos'; }) || null; }
+  function renderLists() { var items = readPlaylists(); var portal = items.filter(function (item) { return item && item.origin === 'portal-webos'; }); $('list-summary').textContent = portal.length ? portal.map(function (item) { return item.name + ' · ' + item.sourceType.toUpperCase(); }).join(' · ') : 'Nenhuma lista sincronizada do Portal.'; if (identity) displayIdentity(identity); }
   function lgUdid() {
     return new Promise(function (resolve) {
       if (!window.webOS || !webOS.service || !webOS.service.request) return resolve(null);
@@ -58,7 +60,7 @@
     } finally { clearTimeout(timeout); }
   }
   function applyServerCode(body) { var code = text(body && body.server_code); if (code && identity) { identity.serverCode = code; save(identity); displayIdentity(identity); } }
-  async function registerIdentity() { var registration = await request('webos-device-register', { device_id: identity.deviceId, device_key: identity.key, app_version: '0.2.1' }); if (registration.status >= 400) throw new Error('registration'); identity.portalRegistered = registration.body && registration.body.registered !== false; applyServerCode(registration.body); save(identity); displayIdentity(identity); return registration.body; }
+  async function registerIdentity() { var registration = await request('webos-device-register', { device_id: identity.deviceId, device_key: identity.key, app_version: '0.3.0' }); if (registration.status >= 400) throw new Error('registration'); identity.portalRegistered = registration.body && registration.body.registered !== false; applyServerCode(registration.body); save(identity); displayIdentity(identity); return registration.body; }
   async function activateIdentity() {
     $('consent-button').disabled = true; setStatus('Preparando a identificação segura da TV…');
     var udid = await lgUdid(); identity = await toPortalIdentity(udid); save(identity); displayIdentity(identity);
@@ -72,12 +74,40 @@
   async function checkAccess() {
     if (!identity) return; $('check-button').disabled = true; setStatus('Consultando sua licença…');
     try {
-      var result = await request('webos-license-status', { device_id: identity.deviceId, device_key: identity.key, app_version: '0.2.1' });
+      var result = await request('webos-license-status', { device_id: identity.deviceId, device_key: identity.key, app_version: '0.3.0' });
       var body = result.body || {}; applyServerCode(body);
       if (window.ELVANOQPlaylist.allowed(body)) setStatus('Acesso liberado.', 'granted'); else setStatus(text(body.message) || 'Esta TV não possui uma licença ativa para reprodução.', 'error');
     } catch (_) { setStatus('Não foi possível consultar a licença agora. Verifique sua conexão e tente novamente.', 'error'); }
     finally { $('check-button').disabled = false; }
   }
+  async function contentAccess() {
+    var result = await request('webos-license-status', { device_id: identity.deviceId, device_key: identity.key, app_version: '0.3.0' });
+    var body = result.body || {}; applyServerCode(body);
+    if (result.status >= 400 || !window.ELVANOQPlaylist.allowed(body)) throw new Error(text(body.message) || 'A licença desta TV não permite carregar conteúdo.');
+    return body;
+  }
+  async function fetchExternal(url) {
+    var controller = new AbortController(); var timeout = setTimeout(function () { controller.abort(); }, 15000);
+    try { return await fetch(url, { signal: controller.signal }); } finally { clearTimeout(timeout); }
+  }
+  function renderCatalog(channels) {
+    var list = $('catalog-list'); list.textContent = ''; $('catalog-card').hidden = false;
+    $('catalog-summary').textContent = channels.length ? channels.length + ' canais carregados. Selecione um canal para reproduzir.' : 'Nenhum canal disponível nesta lista.';
+    channels.forEach(function (channel) { var button = document.createElement('button'); var group = document.createElement('span'); button.type = 'button'; button.className = 'channel-button'; button.setAttribute('role', 'listitem'); button.textContent = channel.name; group.className = 'channel-group'; group.textContent = channel.group; button.appendChild(group); button.addEventListener('click', function () { playChannel(channel); }); list.appendChild(button); });
+  }
+  async function loadCatalog() {
+    var playlist = portalPlaylist(); if (!identity || !playlist || catalogInFlight) return;
+    catalogInFlight = true; $('catalog-button').disabled = true; setStatus('Verificando a licença e carregando o catálogo…');
+    try {
+      await contentAccess(); var channels = [];
+      if (playlist.sourceType === 'm3u') { var m3uResponse = await fetchExternal(playlist.credentials.url); if (!m3uResponse.ok) throw new Error('A lista M3U não pôde ser carregada agora.'); channels = window.ELVANOQPlaylist.parseM3u(await m3uResponse.text()); }
+      else { var url = window.ELVANOQPlaylist.buildXtreamApiUrl(playlist.credentials.host, playlist.credentials.username, playlist.credentials.password, 'get_live_streams'); if (!url) throw new Error('O endereço Xtream salvo é inválido.'); var xtreamResponse = await fetchExternal(url); if (!xtreamResponse.ok) throw new Error('O catálogo Xtream não pôde ser carregado agora.'); channels = window.ELVANOQPlaylist.xtreamLiveStreams(playlist.credentials.host, playlist.credentials.username, playlist.credentials.password, await xtreamResponse.json()); }
+      renderCatalog(channels); setStatus(channels.length ? 'Catálogo carregado. Selecione um canal.' : 'A lista não possui canais disponíveis.');
+    } catch (error) { setStatus(error && text(error.message) || 'Falha temporária ao carregar o catálogo. Sua lista foi preservada.', 'error'); }
+    finally { catalogInFlight = false; if (identity) displayIdentity(identity); }
+  }
+  async function playChannel(channel) { var player = $('player'); setStatus('Verificando o acesso para reprodução…'); try { await contentAccess(); $('player-card').hidden = false; $('player-title').textContent = channel.name; player.src = channel.streamUrl; await player.play(); } catch (_) { stopPlayer(); setStatus('Não foi possível iniciar este canal. Verifique sua licença e a disponibilidade no provedor.', 'error'); } }
+  function stopPlayer() { var player = $('player'); player.pause(); player.removeAttribute('src'); player.load(); $('player-card').hidden = true; }
   function applyRetry(retryAfter) { var seconds = parseInt(retryAfter, 10); if (!Number.isFinite(seconds) || seconds < 1) seconds = 30; retryAt = Date.now() + seconds * 1000; displayIdentity(identity); setStatus('Muitas tentativas. Aguarde cerca de ' + seconds + ' segundos antes de tentar novamente.', 'error'); setTimeout(function () { if (identity) { retryAt = 0; displayIdentity(identity); } }, seconds * 1000); }
   async function syncPlaylist() {
     if (!identity || syncInFlight || Date.now() < retryAt || identity.portalRegistered !== true) return;
@@ -90,7 +120,7 @@
   function setupRemoteNavigation() { document.addEventListener('keydown', function (event) { if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return; var buttons = Array.prototype.filter.call(document.querySelectorAll('button:not([disabled]):not([hidden])'), function (button) { return button.offsetParent !== null; }); var index = buttons.indexOf(document.activeElement); if (index === -1) return; event.preventDefault(); buttons[(index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length].focus(); }); }
   function init() {
     identity = read(); if (identity) { displayIdentity(identity); if (identity.portalRegistered === true) { $('consent-button').style.display = 'none'; $('consent-copy').style.display = 'none'; } else { $('consent-button').textContent = 'Vincular identificação existente'; $('consent-copy').textContent = 'Vincule esta identificação já criada para buscar as listas salvas no Portal.'; } setStatus('Identificação recuperada. Vincule a TV no Portal ou busque sua lista.'); } renderLists();
-    $('consent-button').addEventListener('click', registerExistingIdentity); $('check-button').addEventListener('click', checkAccess); $('sync-button').addEventListener('click', syncPlaylist); $('settings-sync-button').addEventListener('click', syncPlaylist); $('portal-button').addEventListener('click', openPortal); $('toggle-key-button').addEventListener('click', function () { keyVisible = !keyVisible; if (identity) displayIdentity(identity); }); setupRemoteNavigation();
+    $('consent-button').addEventListener('click', registerExistingIdentity); $('check-button').addEventListener('click', checkAccess); $('sync-button').addEventListener('click', syncPlaylist); $('settings-sync-button').addEventListener('click', syncPlaylist); $('catalog-button').addEventListener('click', loadCatalog); $('stop-button').addEventListener('click', stopPlayer); $('portal-button').addEventListener('click', openPortal); $('toggle-key-button').addEventListener('click', function () { keyVisible = !keyVisible; if (identity) displayIdentity(identity); }); setupRemoteNavigation();
   }
   document.addEventListener('DOMContentLoaded', init);
 }());
