@@ -7,7 +7,7 @@ body { margin: 0; min-width: 960px; min-height: 540px; background: radial-gradie
 .mark { height: 34px; width: 34px; display: grid; place-items: center; border: 2px solid #f8fafc; border-radius: 10px; font-size: 21px; letter-spacing: 0; }
 .card { width: min(660px, 70vw); padding: 37px 42px 34px; border: 1px solid rgba(186, 221, 249, .19); border-radius: 22px; background: rgba(7, 18, 33, .80); box-shadow: 0 24px 70px rgba(0, 0, 0, .38); }
 .eyebrow, .label { margin: 0; color: #8dbde7; font-size: 12px; font-weight: 700; letter-spacing: 1.6px; }
-h1 { margin: 10px 0 10px; font-size: 36px; letter-spacing: -.6px; }
+h1, h2 { margin: 10px 0 10px; font-size: 36px; letter-spacing: -.6px; } h2 { font-size: 24px; }
 .lead { color: #b9c7d7; margin: 0 0 25px; font-size: 17px; line-height: 1.5; }
 .identity { padding: 18px 20px; display: grid; gap: 8px; min-height: 102px; background: rgba(255, 255, 255, .05); border: 1px solid rgba(255,255,255,.1); border-radius: 14px; }
 .identity strong { font-family: "Courier New", monospace; font-size: 24px; letter-spacing: 1px; }
@@ -16,6 +16,6 @@ h1 { margin: 10px 0 10px; font-size: 36px; letter-spacing: -.6px; }
 .notice { margin: 14px 0 17px; line-height: 1.45; }
 .status { display: none; margin: 15px 0 0; padding: 12px 13px; border-left: 3px solid #56a3e6; border-radius: 6px; background: rgba(86,163,230,.12); color: #d6edff; font-size: 14px; }
 .status.visible { display: block; }.status.error { border-color: #ee8d88; background: rgba(238,141,136,.12); color: #ffd6d3; }.status.granted { border-color: #77d5a8; background: rgba(119,213,168,.11); color: #d9ffec; }
-.actions { display: flex; align-items: center; gap: 13px; margin-top: 23px; }
+.portal-help { margin: 18px 0 5px; color: #c4d4e2; font-size: 14px; line-height: 1.4; }.portal-address { margin: 0; color: #92caff; font-family: "Courier New", monospace; font-size: 14px; }.actions { display: flex; align-items: center; gap: 13px; margin-top: 23px; flex-wrap: wrap; }.lists-card { padding-top: 26px; }.compact { margin-bottom: 18px; }.inline-button { justify-self: start; border: 0; padding: 2px 0; color: #92caff; background: transparent; font-size: 13px; font-weight: 700; }
 button { font: inherit; cursor: pointer; }.button { min-height: 49px; padding: 0 22px; border-radius: 11px; border: 1px solid transparent; font-weight: 700; font-size: 15px; }.primary { width: 100%; background: #f8fafc; color: #091321; }.secondary { background: transparent; color: #f8fafc; border-color: rgba(255,255,255,.35); }.link-button { border: 0; background: transparent; color: #92caff; font-size: 15px; font-weight: 700; }.button:disabled { opacity: .45; cursor: not-allowed; }button:focus { outline: 3px solid #fff; outline-offset: 4px; }
 footer { position: absolute; bottom: 4.6vh; }
