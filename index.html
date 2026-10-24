@@ -1,63 +1,11 @@
 <!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#07101f" />
-    <title>ELVANOQ Play</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <main class="screen" aria-live="polite">
-      <section class="brand" aria-label="ELVANOQ Play">
-        <div class="mark" aria-hidden="true">E</div>
-        <span>ELVANOQ</span><small>PLAY</small>
-      </section>
-      <section class="card" aria-labelledby="title">
-        <p class="eyebrow">VERSÃO PARA LG webOS</p>
-        <h1 id="title">Ative sua TV</h1>
-        <p class="lead">Vincule esta TV à sua conta pelo Portal ELVANOQ para usar suas listas autorizadas.</p>
-        <div id="identity" class="identity pending">
-          <span class="label">IDENTIFICAÇÃO DA TV</span>
-          <strong id="device-id">Preparando identificação…</strong>
-          <span id="device-key" class="muted"></span>
-          <button id="toggle-key-button" class="inline-button" type="button" hidden>Ocultar chave</button>
-        </div>
-        <button id="consent-button" class="button primary" type="button">Continuar e gerar identificação</button>
-        <p id="consent-copy" class="notice">Ao continuar, você autoriza o uso da identificação desta TV exclusivamente para vinculação, licença e suporte do ELVANOQ Play.</p>
-        <div id="status" class="status" role="status">Aguardando autorização.</div>
-        <p class="portal-help">No portal, selecione <strong>TV LG webOS</strong> e informe o código e a chave exibidos nesta tela.</p>
-        <p class="portal-address"><span>Cadastre-se no Portal:</span> elvanoqplay.app/adicionar-lista/</p>
-        <div class="actions">
-          <button id="check-button" class="button secondary" type="button" disabled>Verificar acesso</button>
-          <button id="sync-button" class="button secondary" type="button" disabled>Buscar lista do Portal</button>
-          <button id="portal-button" class="link-button" type="button">Abrir Portal</button>
-        </div>
-      </section>
-      <section class="card lists-card" aria-labelledby="lists-title">
-        <p class="eyebrow">LISTAS</p>
-        <h2 id="lists-title">Listas salvas</h2>
-        <p id="list-summary" class="lead compact">Nenhuma lista sincronizada do Portal.</p>
-        <div class="actions compact-actions">
-          <button id="settings-sync-button" class="button secondary" type="button" disabled>Sincronizar lista</button>
-          <button id="catalog-button" class="button secondary" type="button" disabled>Carregar canais</button>
-        </div>
-      </section>
-      <section id="catalog-card" class="card catalog-card" aria-labelledby="catalog-title" hidden>
-        <p class="eyebrow">CATÁLOGO DA LISTA</p>
-        <h2 id="catalog-title">Canais</h2>
-        <p id="catalog-summary" class="lead compact"></p>
-        <div id="catalog-list" class="catalog-list" role="list"></div>
-      </section>
-      <section id="player-card" class="card player-card" aria-labelledby="player-title" hidden>
-        <p class="eyebrow">REPRODUÇÃO</p>
-        <h2 id="player-title">Canal</h2>
-        <video id="player" class="player" controls playsinline></video>
-        <button id="stop-button" class="button secondary" type="button">Parar reprodução</button>
-      </section>
-      <footer>ELVANOQ Play · LG webOS · <span id="version">0.3.0</span></footer>
-    </main>
-    <script src="playlist-utils.js"></script>
-    <script src="app.js"></script>
-  </body>
-</html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#050910"><title>ELVANOQ Play</title><link rel="stylesheet" href="styles.css"></head><body>
+<main class="app-shell"><aside class="side-nav"><div class="brand"><img src="icon.png" alt=""><span>ELVANOQ<small>PLAY</small></span></div><nav id="navigation" class="nav-items"><button class="nav-item active" data-view="home">⌂<span>Início</span></button><button class="nav-item" data-view="live">◉<span>TV ao Vivo</span></button><button class="nav-item" data-view="movies">▣<span>Filmes</span></button><button class="nav-item" data-view="series">▤<span>Séries</span></button><button class="nav-item" data-view="search">⌕<span>Buscar</span></button><button class="nav-item" data-view="saved">♡<span>Minha Lista</span></button><button class="nav-item" data-view="settings">⚙<span>Ajustes</span></button></nav><div class="nav-footer">LG webOS<br>v0.4.0</div></aside>
+<section class="content-shell"><header class="topbar"><button id="menu-button" class="icon-button">☰</button><div id="screen-title" class="screen-title">Início</div><button id="open-search" class="icon-button">⌕</button></header><div id="app-status" class="toast" role="status"></div>
+<section id="home-view" class="view active" data-view-panel="home"><div id="hero" class="hero"><div class="hero-art"></div><div class="hero-gradient"></div><div class="hero-copy"><p class="kicker">DESTAQUE DA SEMANA</p><h1 id="hero-title">Seu conteúdo, do seu jeito.</h1><p id="hero-meta">ELVANOQ Play para LG webOS</p><p id="hero-description">Vincule esta TV ao Portal para acessar sua lista autorizada.</p><div class="hero-actions"><button id="hero-play" class="button primary">▶ Assistir agora</button><button id="hero-details" class="button soft">ⓘ Detalhes</button></div></div><div id="hero-dots" class="hero-dots"></div></div><div id="home-sections" class="rows"></div></section>
+<section id="live-view" class="view" data-view-panel="live"><div class="page-heading"><p class="kicker">GUIA</p><h1>TV ao Vivo</h1><p>Explore canais, categorias e programação da sua lista.</p></div><div class="live-layout"><aside id="live-categories" class="category-panel"></aside><div id="live-list" class="channel-panel"></div><aside id="live-preview" class="preview-panel"><div class="preview-empty">Selecione um canal<br>para visualizar</div></aside></div></section>
+<section id="movies-view" class="view" data-view-panel="movies"><div class="page-heading"><p class="kicker">CATÁLOGO</p><h1>Filmes</h1><p id="movies-count">Sincronize sua lista para carregar filmes.</p></div><div id="movies-grid" class="poster-grid"></div></section><section id="series-view" class="view" data-view-panel="series"><div class="page-heading"><p class="kicker">CATÁLOGO</p><h1>Séries</h1><p id="series-count">Sincronize sua lista para carregar séries.</p></div><div id="series-grid" class="poster-grid"></div></section>
+<section id="search-view" class="view" data-view-panel="search"><div class="page-heading"><p class="kicker">ENCONTRE O QUE QUER VER</p><h1>Busca</h1><label class="search-field">⌕<input id="search-input" type="search" autocomplete="off" placeholder="Canais, filmes e séries"></label></div><div id="search-results" class="search-results"></div></section><section id="saved-view" class="view" data-view-panel="saved"><div class="page-heading"><p class="kicker">SUA LISTA</p><h1>Assistir mais tarde</h1><p>Seus favoritos e conteúdos salvos ficam disponíveis aqui.</p></div><div id="saved-grid" class="poster-grid"></div></section>
+<section id="settings-view" class="view" data-view-panel="settings"><div class="page-heading"><p class="kicker">CONTA E DISPOSITIVO</p><h1>Ajustes</h1><p>Gerencie sua TV, a lista e suas preferências.</p></div><div class="settings-grid"><article class="settings-card"><h2>TV LG webOS</h2><p id="settings-device-code">Gere a identificação da TV para continuar.</p><p id="settings-device-key" class="sensitive"></p><button id="toggle-key-button" class="text-button" hidden>Ocultar chave</button><button id="register-button" class="button primary">Ativar TV</button><button id="check-button" class="button soft" disabled>Verificar acesso</button></article><article class="settings-card"><h2>Lista do Portal</h2><p id="list-summary">Nenhuma lista sincronizada.</p><button id="sync-button" class="button primary" disabled>Sincronizar lista</button><button id="catalog-button" class="button soft" disabled>Atualizar catálogo</button><button id="portal-button" class="text-button">Abrir elvanoqplay.app</button></article><article class="settings-card"><h2>Controle parental</h2><p>Proteja categorias e conteúdos definidos para esta TV.</p><button id="parental-button" class="button soft">Configurar PIN</button></article><article class="settings-card"><h2>Dados locais</h2><p>Favoritos, progresso e histórico permanecem somente nesta TV.</p><button id="clear-history-button" class="text-button danger">Limpar histórico</button></article></div></section></section></main>
+<section id="activation-modal" class="modal-layer"><div class="activation-card"><div class="activation-brand"><img src="icon.png" alt="">ELVANOQ <small>PLAY</small></div><p class="kicker">VERSÃO PARA LG webOS</p><h1>Ative sua TV</h1><p>Vincule esta TV à sua conta pelo Portal ELVANOQ para usar suas listas autorizadas.</p><div id="identity" class="identity"><span>IDENTIFICAÇÃO DA TV</span><strong id="device-id">Preparando identificação…</strong><em id="device-key"></em></div><button id="consent-button" class="button primary wide">Continuar e gerar identificação</button><p id="consent-copy" class="muted">No portal, selecione <b>TV LG webOS</b> e informe o código e a chave exibidos nesta tela.</p><p class="portal-address">elvanoqplay.app/adicionar-lista/</p></div></section>
+<section id="detail-modal" class="modal-layer" hidden><div class="detail-card"><button id="detail-close" class="close-button">×</button><div id="detail-art" class="detail-art"></div><div class="detail-copy"><p id="detail-type" class="kicker"></p><h1 id="detail-title"></h1><p id="detail-meta"></p><p id="detail-description"></p><div class="hero-actions"><button id="detail-play" class="button primary">▶ Assistir agora</button><button id="detail-save" class="button soft">♡ Minha Lista</button></div><div id="episodes" class="episodes"></div></div></div></section><section id="player-modal" class="player-layer" hidden><video id="player" class="player" controls playsinline></video><div id="player-osd" class="player-osd"><button id="player-back" class="button soft">← Voltar</button><div><p id="player-title"></p><small id="player-subtitle"></small></div><button id="player-favorite" class="button soft">♡</button></div></section><section id="pin-modal" class="modal-layer" hidden><div class="pin-card"><h2>Controle parental</h2><p>Defina ou informe o PIN de quatro dígitos.</p><input id="pin-input" inputmode="numeric" maxlength="4" type="password"><div><button id="pin-save" class="button primary">Salvar PIN</button><button id="pin-close" class="button soft">Cancelar</button></div></div></section><script src="playlist-utils.js"></script><script src="app.js"></script></body></html>
