@@ -1,11 +1,11 @@
 :root { color-scheme: dark; font-family: Arial, Helvetica, sans-serif; background: #07101f; color: #f8fafc; }
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 960px; min-height: 540px; background: radial-gradient(circle at 82% 12%, #173e65 0, transparent 32%), linear-gradient(135deg, #07101f 0%, #08182b 55%, #06101c 100%); }
-.screen { min-height: 100vh; padding: 6.2vh 8vw 4vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3.4vh; }
+.screen { min-height: 100vh; padding: 8.8vh 8vw 7.8vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(16px, 2.2vh, 28px); overflow-y: auto; }
 .brand { position: absolute; top: 6vh; left: 7vw; display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 800; letter-spacing: 4px; }
 .brand small { color: #92b8d9; font-size: 9px; letter-spacing: 2.5px; align-self: flex-end; margin: 0 0 3px -7px; }
 .mark { height: 34px; width: 34px; display: grid; place-items: center; border: 2px solid #f8fafc; border-radius: 10px; font-size: 21px; letter-spacing: 0; }
-.card { width: min(660px, 70vw); padding: 37px 42px 34px; border: 1px solid rgba(186, 221, 249, .19); border-radius: 22px; background: rgba(7, 18, 33, .80); box-shadow: 0 24px 70px rgba(0, 0, 0, .38); }
+.card { width: min(720px, 70vw); padding: 32px 38px 30px; border: 1px solid rgba(186, 221, 249, .19); border-radius: 22px; background: rgba(7, 18, 33, .80); box-shadow: 0 24px 70px rgba(0, 0, 0, .38); }
 .eyebrow, .label { margin: 0; color: #8dbde7; font-size: 12px; font-weight: 700; letter-spacing: 1.6px; }
 h1, h2 { margin: 10px 0 10px; font-size: 36px; letter-spacing: -.6px; } h2 { font-size: 24px; }
 .lead { color: #b9c7d7; margin: 0 0 25px; font-size: 17px; line-height: 1.5; }
@@ -16,6 +16,7 @@ h1, h2 { margin: 10px 0 10px; font-size: 36px; letter-spacing: -.6px; } h2 { fon
 .notice { margin: 14px 0 17px; line-height: 1.45; }
 .status { display: none; margin: 15px 0 0; padding: 12px 13px; border-left: 3px solid #56a3e6; border-radius: 6px; background: rgba(86,163,230,.12); color: #d6edff; font-size: 14px; }
 .status.visible { display: block; }.status.error { border-color: #ee8d88; background: rgba(238,141,136,.12); color: #ffd6d3; }.status.granted { border-color: #77d5a8; background: rgba(119,213,168,.11); color: #d9ffec; }
-.portal-help { margin: 18px 0 5px; color: #c4d4e2; font-size: 14px; line-height: 1.4; }.portal-address { margin: 0; color: #92caff; font-family: "Courier New", monospace; font-size: 14px; }.actions { display: flex; align-items: center; gap: 13px; margin-top: 23px; flex-wrap: wrap; }.lists-card { padding-top: 26px; }.compact { margin-bottom: 18px; }.inline-button { justify-self: start; border: 0; padding: 2px 0; color: #92caff; background: transparent; font-size: 13px; font-weight: 700; }
+.portal-help { margin: 18px 0 5px; color: #c4d4e2; font-size: 14px; line-height: 1.4; }.portal-address { margin: 0; color: #92caff; font-family: "Courier New", monospace; font-size: 14px; }.portal-address span { color: #c4d4e2; font-family: Arial, Helvetica, sans-serif; }.actions { display: flex; align-items: center; gap: 13px; margin-top: 23px; flex-wrap: wrap; }.lists-card { padding-top: 24px; }.compact { margin-bottom: 18px; }.inline-button { justify-self: start; border: 0; padding: 2px 0; color: #92caff; background: transparent; font-size: 13px; font-weight: 700; }
 button { font: inherit; cursor: pointer; }.button { min-height: 49px; padding: 0 22px; border-radius: 11px; border: 1px solid transparent; font-weight: 700; font-size: 15px; }.primary { width: 100%; background: #f8fafc; color: #091321; }.secondary { background: transparent; color: #f8fafc; border-color: rgba(255,255,255,.35); }.link-button { border: 0; background: transparent; color: #92caff; font-size: 15px; font-weight: 700; }.button:disabled { opacity: .45; cursor: not-allowed; }button:focus { outline: 3px solid #fff; outline-offset: 4px; }
 footer { position: absolute; bottom: 4.6vh; }
+@media (max-height: 760px) { .screen { justify-content: flex-start; padding-top: 13vh; padding-bottom: 7vh; } .brand { top: 3vh; } .card { padding: 24px 30px; } h1 { font-size: 31px; } .lead { margin-bottom: 17px; } .identity { min-height: 86px; padding: 14px 16px; } .actions { margin-top: 17px; } footer { display: none; } }
