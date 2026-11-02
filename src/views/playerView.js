@@ -1,0 +1,411 @@
+/* Porta de components/PlayerView.xml + PlayerView.brs com o <video> nativo
+ * do webOS: OSD superior/inferior, linha do tempo, controles ↶10s / Pausar /
+ * 10s↷ / Áudio / Legendas, zapping ↑/↓ no ao vivo, guia now/next,
+ * reconexão automática (3x), pular abertura, próximo episódio em 6s e
+ * gravação de progresso a cada 30s.
+ */
+(function (EP) {
+  'use strict';
+  var S = EP.Stage, LS = EP.LocalState, P = EP.Parental, F = EP.StreamFormat, G = EP.EpgRules;
+
+  function PlayerView(parent) {
+    var root = this.root = S.group(parent, { className: 'layer', visible: false });
+    var self = this;
+    this.events = new EP.Emitter();
+    S.rect(root, { x: 0, y: 0, w: 1920, h: 1080, color: '0x000000FF' });
+    var video = this.video = document.createElement('video');
+    video.className = 'sg-video';
+    video.setAttribute('playsinline', '');
+    video.style.left = '0px'; video.style.top = '0px'; video.style.width = '1920px'; video.style.height = '1080px';
+    root.appendChild(video);
+    // OSD com a geometria do PlayerView.xml do Roku 0.1.88.
+    var osd = this.osd = S.group(root, { className: 'layer' });
+    S.rect(osd, { x: 0, y: 0, w: 1920, h: 1080, color: '0x070B1433' });
+    S.el(osd, { x: 0, y: 0, w: 1920, h: 240, css: 'background:linear-gradient(rgba(7,11,20,0.92),rgba(7,11,20,0))' });
+    S.el(osd, { x: 0, y: 440, w: 1920, h: 640, css: 'background:linear-gradient(rgba(7,11,20,0),rgba(7,11,20,0.82) 45%,rgba(7,11,20,0.97))' });
+    this.backLabel = S.el(osd, { x: 0, y: 0, w: 1, h: 1, visible: false });
+    this.logo = S.el(osd, { x: 64, y: 664, w: 108, h: 72, visible: false, css: 'border-radius:12px;background:#111b2d center/contain no-repeat' });
+    this.hint = S.label(osd, { x: 64, y: 52, w: 1400, h: 34, text: 'OK: controles   •   Voltar: sair', size: 22, color: '0xC9D3E3FF' });
+    this.contentBadge = S.label(osd, { x: 1456, y: 52, w: 400, h: 34, text: 'ELVANOQ PLAY', size: 18, weight: 700, align: 'right', color: '0x00D7FFFF', css: 'letter-spacing:0.14em' });
+    this.nowPlaying = S.label(osd, { x: 64, y: 752, w: 800, h: 26, text: 'REPRODUZINDO', size: 18, weight: 700, color: '0x00D7FFFF', css: 'letter-spacing:0.14em' });
+    this.title = S.label(osd, { x: 64, y: 784, w: 1500, h: 56, size: 42, weight: 700, css: 'letter-spacing:-0.015em' });
+    this.liveGuideLabel = S.label(osd, { x: 64, y: 846, w: 1500, h: 32, size: 22, weight: 500, color: '0xD6DEEBFF', visible: false });
+    this.timeline = S.el(osd, { x: 64, y: 898, w: 1792, h: 6, className: 'timeline', html: '<div class="fill" style="width:0"></div>' });
+    this.timelineProgress = this.timeline.firstChild;
+    this.timeLabel = S.label(osd, { x: 64, y: 914, w: 700, h: 30, size: 22, weight: 600 });
+    this.trackStatus = S.label(osd, { x: 856, y: 914, w: 1000, h: 30, size: 20, align: 'right', color: '0x8894A8FF' });
+    this.trackPanelTitle = document.createElement('span');
+    this.trackPanelValue = document.createElement('span');
+    var defs = ['-10s', 'Pausar', '+10s', 'Áudio', 'Legendas'];
+    this.controlLabels = [];
+    for (var i = 0; i < 5; i++) {
+      var control = S.el(osd, { x: 64 + i * 176, y: 958, w: 160, h: 56, className: 'osd-control' });
+      S.setButton(control, '', defs[i]);
+      (function (index) { control.addEventListener('click', function () { self.selectedControl = index; self.updateControlFocus(); self.runSelectedControl(); }); }(i));
+      this.controlLabels.push(control);
+    }
+    this.controls = S.label(osd, { x: 1256, y: 972, w: 600, h: 30, text: '←/→ selecionar   •   OK confirmar', size: 20, align: 'right', color: '0x8894A8FF' });
+    this.backLabel.addEventListener('click', function () { self.handleKey('back'); });
+    this.nextPanel = S.group(root, { className: 'layer', visible: false });
+    S.el(this.nextPanel, { x: 660, y: 420, w: 600, h: 176, css: 'border-radius:24px;background:rgba(13,20,34,0.95);border:2px solid rgba(0,215,255,0.35);box-shadow:0 30px 70px rgba(0,0,0,0.5)' });
+    S.label(this.nextPanel, { x: 696, y: 448, w: 540, h: 30, text: 'PRÓXIMO EPISÓDIO', size: 18, weight: 700, color: '0x00D7FFFF', css: 'letter-spacing:0.14em' });
+    this.nextEpisodeHint = S.label(this.nextPanel, { x: 696, y: 492, w: 540, h: 80, size: 22, lineHeight: 30, color: '0xF4F8FFFF' });
+    this.nextEpisodeHint.className += ' pre';
+
+    this.content = null; this.selectedControl = 1; this.lastPersistedSecond = -30; this.liveRetries = 0;
+    this.awaitingNextEpisode = false; this.subtitlesDisabled = false;
+    this.osdTimer = new EP.Timer(5, false, function () { if (self.isPlaying()) self.hideOsd(); });
+    this.nextEpisodeTimer = new EP.Timer(6, false, function () { self.requestNextEpisode(); });
+    this.retryTimer = new EP.Timer(2, false, function () { self.onRetryTimer(); });
+    this.bindVideo();
+    this.updateControlFocus();
+  }
+
+  PlayerView.prototype.isVisible = function () { return S.isVisible(this.root); };
+  PlayerView.prototype.isPlaying = function () { return !this.video.paused && !this.video.ended && this.video.readyState > 2; };
+  PlayerView.prototype.isLive = function () { return !!(this.content && this.content.liveQueue && this.content.liveQueue.length); };
+  PlayerView.prototype.hasTimeline = function () { var d = this.video.duration; return !this.isLive() && isFinite(d) && d > 0; };
+
+  PlayerView.prototype.bindVideo = function () {
+    var self = this, v = this.video;
+    v.addEventListener('playing', function () {
+      self.liveRetries = 0;
+      S.setButton(self.controlLabels[1], '', 'Pausar');
+      if (self.shouldRestorePosition && self.content.resumePosition > 0) {
+        try { v.currentTime = self.content.resumePosition; } catch (_) {}
+        self.shouldRestorePosition = false;
+        self.hint.textContent = 'Retomando de onde você parou.';
+      } else if (/Carregando|Reconectando|Tentando/.test(self.hint.textContent)) self.hint.textContent = self.defaultHint();
+      self.refreshTrackStatus();
+      self.showOsd();
+    });
+    v.addEventListener('pause', function () { if (!v.ended) { S.setButton(self.controlLabels[1], '', 'Retomar'); self.showOsd(); } });
+    v.addEventListener('waiting', function () { self.hint.textContent = 'Carregando stream…'; self.showOsd(); });
+    v.addEventListener('timeupdate', function () { self.onPositionChanged(); });
+    v.addEventListener('loadedmetadata', function () { self.refreshTrackStatus(); });
+    v.addEventListener('ended', function () { self.onFinished(); });
+    v.addEventListener('error', function () { self.onError(); });
+  };
+
+  PlayerView.prototype.defaultHint = function () {
+    return this.isLive() ? '↑/↓: trocar canal  •  ' + EP.OPTIONS_LABEL + ': favorito  •  Voltar: sair' : 'OK: controles  •  Voltar: sair';
+  };
+
+  /* content: { streamUrl, id, title, category, resumePosition, persistEnabled,
+   *            skipIntroEnd, nextEpisode, liveQueue, liveIndex, liveGuide } */
+  PlayerView.prototype.play = function (content) {
+    this.content = content;
+    S.show(this.root, true);
+    this.cancelNextEpisode(false);
+    this.title.textContent = content.title || '';
+    var hasLogo = !!(content.logo && content.liveQueue && content.liveQueue.length);
+    S.show(this.logo, hasLogo);
+    if (hasLogo) S.setPoster(this.logo, content.logo);
+    this.nowPlaying.textContent = content.liveQueue && content.liveQueue.length ? 'AO VIVO' : (content.nextEpisode ? 'EPISÓDIO' : 'REPRODUZINDO');
+    this.skipIntroAvailable = content.skipIntroEnd > 0;
+    this.subtitlesDisabled = false;
+    this.lastPersistedSecond = -30;
+    this.shouldRestorePosition = content.resumePosition > 0;
+    this.liveRetries = 0;
+    this.retryTimer.stop();
+    this.selectedControl = 1; this.updateControlFocus();
+    if (P.isBlockedItem(content.category, content.id)) {
+      this.stopVideo();
+      this.hint.textContent = 'Conteúdo protegido. Valide o PIN em Ajustes para assistir.';
+      this.showOsd();
+      return;
+    }
+    this.load(content.streamUrl);
+    this.hint.textContent = this.defaultHint();
+    if (this.isLive()) this.renderLiveGuide(); else S.show(this.liveGuideLabel, false);
+    this.updateTimeline();
+    this.showOsd();
+  };
+
+  PlayerView.prototype.load = function (url) {
+    var v = this.video;
+    this.currentUrl = url;
+    try { v.pause(); } catch (_) {}
+    v.removeAttribute('src');
+    while (v.firstChild) v.removeChild(v.firstChild);
+    var source = document.createElement('source');
+    source.src = url;
+    var mime = F.mimeForUrl(url);
+    if (mime && mime !== 'video/mp2t' && mime !== 'video/x-matroska') source.type = mime;
+    v.appendChild(source);
+    try { v.load(); } catch (_) {}
+    var attempt = v.play();
+    if (attempt && attempt.catch) attempt.catch(function () {});
+  };
+
+  PlayerView.prototype.renderLiveGuide = function () {
+    var guide = this.content && this.content.liveGuide;
+    if (!this.isLive() || !guide || !guide.now) { S.show(this.liveGuideLabel, false); return; }
+    var text = 'GUIA  ' + G.programmeLabel(guide.now, '  ');
+    if (guide.next) text += '   •   SEGUINTE  ' + G.programmeLabel(guide.next, '  ');
+    this.liveGuideLabel.textContent = text;
+    S.show(this.liveGuideLabel, true);
+  };
+
+  PlayerView.prototype.setLiveGuide = function (guide) {
+    if (!this.content) return;
+    this.content.liveGuide = guide;
+    if (S.isVisible(this.osd)) this.renderLiveGuide();
+  };
+
+  PlayerView.prototype.onError = function () {
+    if (!this.content) return;
+    var self = this;
+    if (this.isLive() && this.liveRetries < 3) {
+      this.liveRetries++;
+      this.hint.textContent = 'Reconectando ao canal… (' + this.liveRetries + '/3)';
+      this.showOsd();
+      this.retryTimer.start();
+      return;
+    }
+    this.hint.textContent = 'Não foi possível reproduzir este conteúdo. Tente novamente.';
+    S.setButton(this.controlLabels[1], '', 'Tentar');
+    this.showOsd();
+    setTimeout(function () { self.osdTimer.stop(); }, 0);
+  };
+
+  PlayerView.prototype.onRetryTimer = function () {
+    if (!this.isLive() || !this.content) return;
+    // 1ª reconexão em .ts tenta a variante HLS do mesmo canal Xtream.
+    var alternative = this.liveRetries === 1 ? F.hlsAlternative(this.currentUrl) : '';
+    this.load(alternative || this.currentUrl);
+  };
+
+  PlayerView.prototype.onFinished = function () {
+    if (this.isLive() && this.liveRetries < 3) { this.onError(); return; }
+    this.persistProgress(true);
+    var next = this.content && this.content.nextEpisode;
+    if (next && next.url) {
+      this.osdTimer.stop();
+      this.awaitingNextEpisode = true;
+      S.show(this.nextPanel, true);
+      this.nextEpisodeHint.textContent = 'A seguir: ' + next.title + '\nOK iniciar agora  •  ' + EP.OPTIONS_LABEL + ' cancelar';
+      this.hint.textContent = 'Próximo episódio em 6 segundos.';
+      this.showOsd();
+      this.nextEpisodeTimer.start();
+      return;
+    }
+    this.hint.textContent = 'Reprodução concluída.';
+    this.showOsd();
+  };
+
+  PlayerView.prototype.onPositionChanged = function () {
+    this.updateTimeline();
+    this.updateSkipIntroHint();
+    var pos = this.video.currentTime;
+    if (pos - this.lastPersistedSecond >= 30) this.persistProgress(false);
+  };
+
+  PlayerView.prototype.updateSkipIntroHint = function () {
+    if (!this.skipIntroAvailable || !this.content) return;
+    if (this.video.currentTime >= this.content.skipIntroEnd) { this.skipIntroAvailable = false; return; }
+    this.hint.textContent = EP.OPTIONS_LABEL + ': pular abertura  •  OK: controles  •  Voltar: sair';
+  };
+
+  PlayerView.prototype.handleKey = function (key) {
+    if (this.awaitingNextEpisode) {
+      if (key === 'OK') this.requestNextEpisode();
+      else if (key === 'options' || key === 'back') this.cancelNextEpisode(true);
+      return true;
+    }
+    if (key === 'play' || key === 'pause') { this.togglePlayPause(key); return true; }
+    if (key === 'stop') { this.close(); return true; }
+    if (key === 'rev') { this.seekBy(-10); this.showOsd(); return true; }
+    if (key === 'fwd') { this.seekBy(10); this.showOsd(); return true; }
+    if (key === 'back') { this.close(); return true; }
+    if (key === 'left') { if (this.selectedControl > 0) this.selectedControl--; this.updateControlFocus(); this.showOsd(); return true; }
+    if (key === 'right') { if (this.selectedControl < 4) this.selectedControl++; this.updateControlFocus(); this.showOsd(); return true; }
+    if ((key === 'up' || key === 'channelUp') && this.isLive()) { this.switchLiveChannel(-1); return true; }
+    if ((key === 'down' || key === 'channelDown') && this.isLive()) { this.switchLiveChannel(1); return true; }
+    if (key === 'options' && this.skipIntroAvailable && this.video.currentTime < this.content.skipIntroEnd) {
+      try { this.video.currentTime = this.content.skipIntroEnd; } catch (_) {}
+      this.skipIntroAvailable = false;
+      this.hint.textContent = 'Abertura pulada.';
+      this.showOsd();
+      return true;
+    }
+    if (key === 'options' && this.isLive()) {
+      this.events.emit('favoriteRequested', { id: this.content.id, title: this.content.title, category: this.content.category });
+      this.hint.textContent = LS.isFavorite(this.content.id) ? 'Adicionado aos favoritos.' : 'Removido dos favoritos.';
+      this.showOsd();
+      return true;
+    }
+    if (key === 'OK') { if (S.isVisible(this.osd)) this.runSelectedControl(); else this.showOsd(); return true; }
+    this.showOsd();
+    this.refreshTrackStatus();
+    return true;
+  };
+
+  PlayerView.prototype.close = function () {
+    this.persistProgress(false);
+    this.stopPlayback();
+    S.show(this.root, false);
+    this.events.emit('closeRequested');
+  };
+
+  PlayerView.prototype.requestNextEpisode = function () {
+    if (!this.awaitingNextEpisode) return;
+    this.nextEpisodeTimer.stop();
+    this.awaitingNextEpisode = false;
+    S.show(this.nextPanel, false);
+    if (this.content && this.content.nextEpisode) this.events.emit('nextEpisodeRequested', this.content.nextEpisode);
+  };
+
+  PlayerView.prototype.cancelNextEpisode = function (showMessage) {
+    this.nextEpisodeTimer.stop();
+    this.awaitingNextEpisode = false;
+    S.show(this.nextPanel, false);
+    if (showMessage) {
+      if (this.content) this.content.nextEpisode = null;
+      this.hint.textContent = 'Próximo episódio cancelado.';
+      this.showOsd();
+    }
+  };
+
+  PlayerView.prototype.switchLiveChannel = function (delta) {
+    var c = this.content;
+    var next = Math.max(0, Math.min(c.liveQueue.length - 1, c.liveIndex + delta));
+    if (next === c.liveIndex) { this.hint.textContent = 'Não há outro canal nesta direção.'; this.showOsd(); return; }
+    this.events.emit('channelRequested', { item: c.liveQueue[next], index: next });
+  };
+
+  PlayerView.prototype.showOsd = function () {
+    S.show(this.osd, true);
+    if (this.isLive()) this.renderLiveGuide();
+    if (this.awaitingNextEpisode) S.show(this.nextPanel, true);
+    if (this.isPlaying()) this.osdTimer.start(); else this.osdTimer.stop();
+  };
+
+  PlayerView.prototype.hideOsd = function () {
+    this.osdTimer.stop();
+    S.show(this.osd, false);
+    S.show(this.nextPanel, false);
+  };
+
+  PlayerView.prototype.updateControlFocus = function () {
+    for (var i = 0; i < 5; i++) S.focus(this.controlLabels[i], i === this.selectedControl);
+    this.refreshTrackStatus();
+  };
+
+  PlayerView.prototype.runSelectedControl = function () {
+    var c = this.selectedControl;
+    if (c === 0) this.seekBy(-10);
+    else if (c === 1) this.togglePlayPause('play');
+    else if (c === 2) this.seekBy(10);
+    else if (c === 3) this.cycleAudioTrack();
+    else if (c === 4) this.cycleSubtitleTrack();
+    this.showOsd();
+  };
+
+  PlayerView.prototype.togglePlayPause = function (key) {
+    var v = this.video;
+    if (v.error || /Não foi possível/.test(this.hint.textContent)) {
+      this.hint.textContent = 'Tentando reconectar ao stream…';
+      this.liveRetries = 0;
+      this.load(this.currentUrl);
+    } else if (key === 'pause' || (!v.paused && key !== 'play')) v.pause();
+    else if (v.paused) { var attempt = v.play(); if (attempt && attempt.catch) attempt.catch(function () {}); }
+    else v.pause();
+    this.showOsd();
+  };
+
+  PlayerView.prototype.seekBy = function (delta) {
+    if (!this.hasTimeline()) { this.hint.textContent = 'Avanço não disponível neste stream ao vivo.'; return; }
+    var v = this.video;
+    try { v.currentTime = Math.max(0, Math.min(v.duration, v.currentTime + delta)); } catch (_) {}
+  };
+
+  function audioTracks(v) { var t = v.audioTracks; return t && t.length !== undefined ? t : null; }
+  function textTracks(v) {
+    var list = [], t = v.textTracks;
+    if (!t) return list;
+    for (var i = 0; i < t.length; i++) if (t[i].kind === 'subtitles' || t[i].kind === 'captions') list.push(t[i]);
+    return list;
+  }
+  function trackName(track, index) { return EP.text(track.label) || EP.text(track.language) || ('Faixa ' + (index + 1)); }
+
+  PlayerView.prototype.cycleAudioTrack = function () {
+    var tracks = audioTracks(this.video);
+    if (!tracks || tracks.length < 2) { this.hint.textContent = 'Não há outra faixa de áudio neste stream.'; return; }
+    var current = 0;
+    for (var i = 0; i < tracks.length; i++) if (tracks[i].enabled) current = i;
+    var next = (current + 1) % tracks.length;
+    for (i = 0; i < tracks.length; i++) tracks[i].enabled = i === next;
+    this.hint.textContent = 'Faixa de áudio atualizada.';
+    this.refreshTrackStatus();
+  };
+
+  PlayerView.prototype.cycleSubtitleTrack = function () {
+    var tracks = textTracks(this.video);
+    if (!tracks.length) { this.hint.textContent = 'Não há legendas neste stream.'; return; }
+    var current = -1;
+    for (var i = 0; i < tracks.length; i++) if (tracks[i].mode === 'showing') current = i;
+    var next = current + 1;
+    for (i = 0; i < tracks.length; i++) tracks[i].mode = i === next ? 'showing' : 'disabled';
+    this.subtitlesDisabled = next >= tracks.length;
+    this.hint.textContent = this.subtitlesDisabled ? 'Legendas desativadas.' : 'Legenda atualizada.';
+    this.refreshTrackStatus();
+  };
+
+  PlayerView.prototype.refreshTrackStatus = function () {
+    var audio = 'Áudio: automático', subtitles = 'Legendas: automático';
+    var a = audioTracks(this.video);
+    if (a) for (var i = 0; i < a.length; i++) if (a[i].enabled && a.length > 1) audio = 'Áudio: ' + trackName(a[i], i);
+    var t = textTracks(this.video);
+    if (this.subtitlesDisabled) subtitles = 'Legendas: desativadas';
+    else for (i = 0; i < t.length; i++) if (t[i].mode === 'showing') subtitles = 'Legendas: ' + trackName(t[i], i);
+    this.trackStatus.textContent = audio + '  •  ' + subtitles;
+    if (this.selectedControl === 3) { this.trackPanelTitle.textContent = 'ÁUDIO'; this.trackPanelValue.textContent = audio; }
+    else if (this.selectedControl === 4) { this.trackPanelTitle.textContent = 'LEGENDAS'; this.trackPanelValue.textContent = subtitles; }
+    else { this.trackPanelTitle.textContent = 'ÁUDIO E LEGENDAS'; this.trackPanelValue.textContent = audio + '  •  ' + subtitles; }
+  };
+
+  PlayerView.prototype.updateTimeline = function () {
+    if (!this.hasTimeline()) {
+      var now = this.isLive() && this.content.liveGuide && this.content.liveGuide.now;
+      this.timelineProgress.style.width = now ? Math.round(100 * G.progress(now)) + '%' : '0';
+      this.timeLabel.textContent = now ? 'AO VIVO   •   ' + now.title : 'Transmissão ao vivo';
+      return;
+    }
+    var v = this.video, pct = Math.max(0, Math.min(1, v.currentTime / v.duration));
+    this.timelineProgress.style.width = (pct * 100).toFixed(2) + '%';
+    this.timeLabel.textContent = EP.formatTime(v.currentTime) + ' / ' + EP.formatTime(v.duration);
+  };
+
+  PlayerView.prototype.persistProgress = function (completed) {
+    var c = this.content, v = this.video;
+    if (!c || !c.persistEnabled || !c.id || !(v.currentTime > 0)) return;
+    var duration = isFinite(v.duration) ? Math.floor(v.duration) : 0;
+    if (duration > 0 && v.currentTime / duration >= 0.95) completed = true;
+    var item = { id: c.id, title: c.title, category: c.category, progress_seconds: Math.floor(v.currentTime), duration_seconds: duration, completed: completed, updated_at: new Date().toISOString() };
+    if (c.saved) for (var key in c.saved) if (c.saved[key]) item[key] = c.saved[key];
+    var state = LS.load();
+    if (!this.isLive()) state.continue_watching = completed ? LS.remove(state.continue_watching, item.id) : LS.upsert(LS.remove(state.continue_watching, item.id), item);
+    state.history = LS.upsert(LS.remove(state.history, item.id), item);
+    LS.save(state);
+    this.lastPersistedSecond = Math.floor(v.currentTime);
+  };
+
+  PlayerView.prototype.stopVideo = function () {
+    var v = this.video;
+    try { v.pause(); } catch (_) {}
+    v.removeAttribute('src');
+    while (v.firstChild) v.removeChild(v.firstChild);
+    try { v.load(); } catch (_) {}
+  };
+
+  PlayerView.prototype.stopPlayback = function () {
+    this.retryTimer.stop();
+    this.osdTimer.stop();
+    this.nextEpisodeTimer.stop();
+    this.awaitingNextEpisode = false;
+    this.stopVideo();
+  };
+
+  EP.PlayerView = PlayerView;
+}(window.EP));
