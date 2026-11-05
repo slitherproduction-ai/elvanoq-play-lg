@@ -54,7 +54,7 @@ for (const script of scripts) {
 for (const asset of ['images/elvanoq-wordmark-white.png', 'images/elvanoq-login-tv-backdrop.jpg', 'images/splash.jpg', 'fonts/Inter-Regular.woff', 'fonts/Inter-Medium.woff', 'fonts/Inter-SemiBold.woff', 'fonts/Inter-Bold.woff']) requireFile(asset);
 
 // Testes de regras
-for (const test of ['tests/playlist-sync.test.cjs', 'tests/epg-and-stream.test.cjs']) {
+for (const test of ['tests/playlist-sync.test.cjs', 'tests/epg-and-stream.test.cjs', 'tests/v110-features.test.cjs']) {
   const result = spawnSync(process.execPath, [resolve(root, test)], { encoding: 'utf8' });
   if (result.status !== 0) errors.push(test + ' falhou:\n' + (result.stderr || result.stdout).trim());
 }

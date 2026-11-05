@@ -21,12 +21,12 @@
     this.epg = new EP.EpgService();
     this.views = [
       new EP.HomeView(root), new EP.LiveTVView(root, this.epg), new EP.BrowseView(root, 'movies'), new EP.BrowseView(root, 'series'),
-      new EP.SearchView(root), new EP.LibraryView(root), new EP.ParentalView(root)
+      new EP.SearchView(root), new EP.LibraryView(root), new EP.SettingsView(root, this.settingsProvider())
     ];
-    this.parentalView = this.views[SETTINGS];
+    this.parentalView = this.views[SETTINGS].parental;
     this.detailView = new EP.DetailView(root);
     this.playerView = new EP.PlayerView(root);
-    this.catalog = null; this.categories = null; this.xtream = null; this.lazy = false;
+    this.catalog = null; this.categories = null; this.xtream = null; this.lazy = false; this.visibilityVersion = 0;
     this.resetCategoryCache();
     this.selectedIndex = HOME;
     this.bindViews();
@@ -49,6 +49,7 @@
     v[MOVIES].events.on('selectedItem', openOrPlay);
     v[SERIES].events.on('selectedItem', openOrPlay);
     v[LIVE].events.on('categoryRequested', function (r) { self.requestCategory(LIVE, r); });
+    v[LIVE].events.on('optionsRequested', function (r) { self.openChannelOptions(r.item); });
     v[MOVIES].events.on('categoryRequested', function (r) { self.requestCategory(MOVIES, r); });
     v[SERIES].events.on('categoryRequested', function (r) { self.requestCategory(SERIES, r); });
     v[SEARCH].events.on('searchRequested', function (r) { self.runGlobalSearch(r.query); });
@@ -58,6 +59,7 @@
     v[SEARCH].events.on('keyboardRequested', function () { self.openSearchKeyboard(); });
     v[LIBRARY].events.on('itemRequested', function (saved) { self.onLibraryItemRequested(saved); });
     v[SETTINGS].events.on('action', function (action) { self.onSettingsAction(action); });
+    v[SETTINGS].events.on('visibilityChanged', function () { self.onVisibilityChanged(); });
     var d = this.detailView, p = this.playerView;
     d.events.on('closeRequested', function () { d.show(false); self.refreshCurrent(true); });
     d.events.on('selectedItem', function (item) { self.openCatalogItem(item); });
@@ -125,7 +127,7 @@
   };
 
   AppShell.prototype.refreshCurrent = function (force) {
-    var index = this.selectedIndex, payload = this.payload();
+    var index = this.selectedIndex;
     if (index === LIBRARY) this.views[LIBRARY].refresh();
     if (index === SETTINGS) this.views[SETTINGS].setInfo(this.app.settingsInfo());
     if (!this.catalog) return;
@@ -136,25 +138,87 @@
       if (index === HOME && force) this.views[HOME].setActive(true);
       return;
     }
-    if (index !== LIBRARY) this.views[index].setCatalog(payload);
+    if (index !== LIBRARY) this.views[index].setCatalog(this.payload());
     this.renderedVersion[index] = this.catalogVersion;
   };
 
   AppShell.prototype.payload = function (index) {
     var self = this;
     if (index === undefined) index = this.selectedIndex;
+    var CV = EP.CategoryVisibility;
     var base = {
-      items: this.catalog || [], categories: this.categories || [],
+      items: this.visibleCatalog(), categories: this.visibleCategoryNames(),
       metadataLoader: function (item, cb) { EP.MetadataService.load(item, self.xtream).then(cb); }
     };
-    if (index === HOME) base.items = this.homeItems();
-    if (index === SETTINGS) { base.items = this.pool().slice(0, 3000); base.categories = this.allCategoryNames(); }
+    if (index === HOME) base.items = this.filterVisible(this.homeItems());
+    if (index === SETTINGS) {
+      base.items = this.pool().slice(0, 3000); base.categories = this.allCategoryNames();
+      base.categoryLists = { live: this.categoryList('live'), movies: this.categoryList('movies'), series: this.categoryList('series') };
+    }
     if (!this.lazy) return base;
-    if (index === LIVE) return { lazy: true, liveCategories: this.liveCategories, favorites: this.savedItems('live') };
-    if (index === MOVIES) return { lazy: true, lazyCategories: this.movieCategories };
-    if (index === SERIES) return { lazy: true, lazyCategories: this.seriesCategories };
+    if (index === LIVE) return { lazy: true, liveCategories: CV.filterCategories('live', this.liveCategories), favorites: this.savedItems('live') };
+    if (index === MOVIES) return { lazy: true, lazyCategories: CV.filterCategories('movies', this.movieCategories) };
+    if (index === SERIES) return { lazy: true, lazyCategories: CV.filterCategories('series', this.seriesCategories) };
     if (index === SEARCH) return { lazy: true, items: [] };
     return base;
+  };
+
+  /* ---------- categorias visíveis ----------
+   * [{id, name}] por tipo. Xtream usa o id da categoria; M3U usa o nome. */
+  AppShell.prototype.categoryList = function (kind) {
+    if (this.lazy) return (kind === 'live' ? this.liveCategories : kind === 'movies' ? this.movieCategories : this.seriesCategories) || [];
+    var out = [], seen = {}, items = this.catalog || [];
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i], type = it.type || 'live', name = it.category;
+      if (type !== kind || !name || seen[name]) continue;
+      seen[name] = true; out.push({ id: name, name: name });
+    }
+    return out;
+  };
+
+  /* Mapas de nomes ocultos por tipo, refeitos só quando algo muda. */
+  AppShell.prototype.hiddenNames = function () {
+    var stamp = this.catalogVersion + ':' + this.visibilityVersion;
+    if (this.hiddenCache && this.hiddenCacheStamp === stamp) return this.hiddenCache;
+    var CV = EP.CategoryVisibility, map = {}, any = false;
+    for (var k = 0; k < CV.KINDS.length; k++) {
+      var kind = CV.KINDS[k];
+      map[kind] = CV.hiddenNames(kind, this.categoryList(kind));
+      for (var n in map[kind]) if (map[kind].hasOwnProperty(n)) { any = true; break; }
+    }
+    map.any = any;
+    this.hiddenCache = map; this.hiddenCacheStamp = stamp;
+    return map;
+  };
+
+  AppShell.prototype.filterVisible = function (items) {
+    var hidden = this.hiddenNames();
+    if (!hidden.any || !items) return items || [];
+    var out = [];
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i], names = hidden[it.type || 'live'];
+      if (!names || !names[it.category]) out.push(it);
+    }
+    return out;
+  };
+
+  AppShell.prototype.visibleCatalog = function () {
+    var stamp = this.catalogVersion + ':' + this.visibilityVersion;
+    if (this.visibleCatalogStamp !== stamp) { this.visibleCatalogCache = this.filterVisible(this.catalog || []); this.visibleCatalogStamp = stamp; }
+    return this.visibleCatalogCache;
+  };
+
+  AppShell.prototype.visibleCategoryNames = function () {
+    var hidden = this.hiddenNames(), list = this.categories || [];
+    if (!hidden.any) return list;
+    var out = [];
+    for (var i = 0; i < list.length; i++) if (!hidden.live[list[i]] && !hidden.movies[list[i]] && !hidden.series[list[i]]) out.push(list[i]);
+    return out;
+  };
+
+  AppShell.prototype.onVisibilityChanged = function () {
+    this.visibilityVersion = (this.visibilityVersion || 0) + 1;
+    this.renderedVersion = {}; // todas as seções refazem as listas na próxima abertura
   };
 
   AppShell.prototype.allCategoryNames = function () {
@@ -250,7 +314,7 @@
     var self = this, token = this.catalogToken;
     if (!this.xtream) return;
     EP.CatalogService.search(this.xtream, query, ['live', 'movies', 'series']).then(function (result) {
-      if (token === self.catalogToken) self.views[SEARCH].setResults({ query: query, items: result.items || [], error: result.ok ? '' : result.error });
+      if (token === self.catalogToken) self.views[SEARCH].setResults({ query: query, items: self.filterVisible(result.items || []), error: result.ok ? '' : result.error });
     });
   };
 
@@ -278,12 +342,12 @@
     if (!this.lazy) {
       var needle = normalize(query), items = [], all = this.catalog || [];
       for (var i = 0; i < all.length && items.length < 240; i++) if (all[i].type === kind && normalize(all[i].title).indexOf(needle) !== -1) items.push(all[i]);
-      view.setSearchResults({ query: query, items: items });
+      view.setSearchResults({ query: query, items: this.filterVisible(items) });
       return;
     }
     view.setSearchResults({ query: query, items: [], loading: true });
     EP.CatalogService.search(this.xtream, query, [kind]).then(function (result) {
-      if (token === self.catalogToken && view.search && view.search.query === query) view.setSearchResults({ query: query, items: result.items || [], error: result.ok ? '' : result.error });
+      if (token === self.catalogToken && view.search && view.search.query === query) view.setSearchResults({ query: query, items: self.filterVisible(result.items || []), error: result.ok ? '' : result.error });
     });
   };
 
@@ -326,6 +390,7 @@
       self.resetCategoryCache();
       EP.CatalogService.clearSearchCache();
       self.catalogVersion = (self.catalogVersion || 0) + 1;
+      EP.ListScope.set(EP.ListScope.idFor(playlist));
       migrateLegacyState(self.catalog);
       self.epg.configure(result.epg, function () { if (self.selectedIndex === LIVE) self.views[LIVE].setEpg(); });
       self.refreshCurrent(false);
@@ -448,6 +513,45 @@
     LS.save(state);
   };
 
+  /* ---------- opções do canal e rever programas ---------- */
+  AppShell.prototype.openChannelOptions = function (item) {
+    var self = this, live = this.views[LIVE];
+    var favorite = LS.isFavorite(item.id);
+    this.app.openList({
+      title: EP.displayTitle(item.title), subtitle: 'Opções do canal',
+      items: [{ label: favorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos', action: 'favorite' }, { label: 'Rever programas', meta: 'Até ' + item.archive_days + (item.archive_days === 1 ? ' dia' : ' dias'), action: 'catchup' }],
+      onSelect: function (index, entry) {
+        if (entry.action === 'favorite') { self.app.dialog.close(); live.toggleFavorite(); }
+        else self.openCatchupList(item);
+      }
+    });
+  };
+
+  AppShell.prototype.openCatchupList = function (item) {
+    var self = this;
+    var dialog = this.app.openList({ title: 'Rever programas', subtitle: EP.displayTitle(item.title), items: [], loading: true });
+    var dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    function when(p) {
+      var d = new Date(p.start), today = new Date(), yesterday = new Date(today.getTime() - 86400000);
+      var day = d.toDateString() === today.toDateString() ? 'Hoje' : d.toDateString() === yesterday.toDateString() ? 'Ontem' : dayNames[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth() + 1);
+      return day + '   ' + EP.clockText(d).time + ' – ' + EP.clockText(new Date(p.stop)).time;
+    }
+    this.epg.archive(item, function (result) {
+      if (dialog.closed) return;
+      var rows = [];
+      for (var i = 0; i < result.items.length; i++) rows.push({ label: result.items[i].title, meta: when(result.items[i]), programme: result.items[i] });
+      dialog.opts.onSelect = function (index, entry) { dialog.close(); self.playCatchup(item, entry.programme); };
+      dialog.setItems(rows, result.ok ? 'Nenhum programa disponível para rever neste canal.' : 'Não foi possível carregar a programação para rever.');
+    });
+  };
+
+  AppShell.prototype.playCatchup = function (item, programme) {
+    var urls = EP.CatchupRules.catchupUrls(this.xtream, item.stream_id, programme);
+    if (!urls.length) return;
+    this.clearEpisodeQueue();
+    this.startPlayback({ streamUrl: urls[0], catchupUrls: urls, id: item.id + ':catchup', title: EP.displayTitle(item.title) + '  •  ' + programme.title, category: item.category, resumePosition: 0, persistEnabled: false, skipIntroEnd: 0, nextEpisode: null, liveQueue: [], logo: item.logo });
+  };
+
   AppShell.prototype.playEpisode = function (ep) {
     var queue = this.episodeQueue || [];
     this.startPlayback({
@@ -459,7 +563,7 @@
 
   /* Campos mínimos para recriar o item depois (nunca a URL com usuário/senha). */
   function savedRef(item) {
-    var ref = { kind: item.type, sid: item.series_id || item.stream_id || '', logo: item.logo || '', tvg: item.tvg_id || '' };
+    var ref = { kind: item.type, sid: item.series_id || item.stream_id || '', logo: item.logo || '', tvg: item.tvg_id || '', arc: item.archive_days || 0 };
     var m = item.type === 'movies' && /\.([a-z0-9]{2,5})(?:\?|$)/i.exec(item.stream_url || '');
     if (m) ref.ext = m[1];
     return ref;
@@ -488,7 +592,48 @@
     this.playerView.stopPlayback();
     S.show(this.playerView.root, false);
     this.detailView.show(false);
-    this.parentalView.show(false);
+  };
+
+  /* ---------- Ajustes: contagens, diagnóstico e teste de conexão ----------
+   * Nada aqui mostra host, usuário, senha ou URL. */
+  AppShell.prototype.settingsProvider = function () {
+    var self = this;
+    var tested = { portal: '', server: '', at: '' };
+    return {
+      counts: function () { return { protectedCount: P.protectedCount(self.allCategoryNames()) }; },
+      diagnostics: function () {
+        var info = self.app.settingsInfo(), ua = navigator.userAgent || '';
+        var chrome = /Chrome\/(\d+)/.exec(ua), webos = /Web0S|webOS/i.test(ua);
+        var lists = { live: self.categoryList('live').length, movies: self.categoryList('movies').length, series: self.categoryList('series').length };
+        return {
+          app: EP.VERSION, engine: (webos ? 'webOS • ' : '') + (chrome ? 'Chrome ' + chrome[1] : 'navegador web'),
+          screen: window.innerWidth + '×' + window.innerHeight, device: info.code || 'Não gerado',
+          list: self.catalog ? (self.lazy ? 'Xtream (sob demanda)' : (self.xtream ? 'Xtream' : 'M3U')) : 'Nenhuma',
+          source: info.listLabel,
+          categories: self.catalog ? lists.live + ' ao vivo • ' + lists.movies + ' filmes • ' + lists.series + ' séries' : '',
+          cache: self.lazy ? self.categoryOrder.length + '/10 categorias • ' + EP.formatNumber(self.pool().length) + ' itens' : EP.formatNumber((self.catalog || []).length) + ' itens',
+          license: info.licenseLabel, format: EP.LiveFormat.LABELS[EP.LiveFormat.mode()],
+          remembered: EP.LiveFormat.remembered() === 'ts' ? 'TS' : EP.LiveFormat.remembered() === 'hls' ? 'HLS' : 'Ainda nenhum',
+          parental: !P.hasPin() ? 'Sem PIN' : (P.adultProtection() ? 'PIN • adulto protegido' : 'PIN • adulto sem proteção'),
+          portal: tested.portal, server: tested.server, tested: tested.at
+        };
+      },
+      test: function (done) {
+        var pending = 2;
+        function finish() { if (--pending === 0) { tested.at = EP.clockText().time; done(); } }
+        var t0 = Date.now();
+        Portal.licenseStatus().then(function (r) {
+          tested.portal = r.state === 'offline' ? 'Sem resposta' : 'Conectado • ' + (Date.now() - t0) + ' ms';
+          finish();
+        }, function () { tested.portal = 'Sem resposta'; finish(); });
+        if (!self.xtream) { tested.server = self.catalog ? 'Lista M3U carregada' : 'Sem lista'; finish(); return; }
+        var t1 = Date.now(), x = self.xtream;
+        EP.Http.get(EP.PlaylistRules.buildXtreamApiUrl(x.host, x.username, x.password, '', {}), 12000).then(function (r) {
+          tested.server = r.status >= 200 && r.status < 300 ? 'Respondeu • ' + (Date.now() - t1) + ' ms' : 'Erro ' + r.status;
+          finish();
+        }, function () { tested.server = 'Não respondeu'; finish(); });
+      }
+    };
   };
 
   /* ---------- deep linking (como no Roku 1.0.1) ----------

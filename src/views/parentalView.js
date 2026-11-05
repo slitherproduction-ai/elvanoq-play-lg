@@ -14,15 +14,13 @@
   var LIST_ROWS = 15, LIST_Y = 262, LIST_STRIDE = 44;
 
   function ParentalView(parent) {
-    var root = this.root = S.group(parent, { className: 'layer' });
     var self = this;
     this.events = new EP.Emitter();
-    S.rect(root, { x: 0, y: 0, w: 1920, h: 1080, color: '0x070B14FF' });
-    S.label(root, { x: 64, y: 64, w: 900, h: 52, text: 'Ajustes', size: 40, weight: 700, css: 'letter-spacing:-0.02em' });
-    S.label(root, { x: 64, y: 118, w: 900, h: 28, text: 'Controle parental e restrições desta TV', size: 20, color: '0x8894A8FF' });
-    this.deviceInfo = S.label(root, { x: 944, y: 118, w: 912, h: 28, size: 20, align: 'right', color: '0xB6C2D6FF' });
+    // 1.1.0: página premium dentro de Ajustes (brilho azul, cartões, foco 2 px).
+    var root = this.root = EP.premiumPage(parent, 'Controle parental', 'PIN, conteúdo adulto e restrições desta TV').root;
+    this.deviceInfo = S.label(root, { x: 944, y: 124, w: 912, h: 28, size: 20, align: 'right', color: '0xB6C2D6FF' });
 
-    S.el(root, { x: 64, y: 180, w: 620, h: 830, className: 'panel', css: 'background:#0d1422' });
+    S.el(root, { x: 64, y: 180, w: 620, h: 830, className: 'premium-card' });
     S.label(root, { x: 104, y: 212, w: 540, h: 40, text: 'Controle Parental', size: 26, weight: 600 });
     this.description = S.label(root, { x: 104, y: 258, w: 540, h: 56, size: 20, lineHeight: 28, lines: 2, color: '0xB6C2D6FF' });
     this.dots = [];
@@ -31,19 +29,19 @@
     this.keyNodes = [];
     for (var i = 0; i < KEYS.length; i++) {
       var label = KEYS[i] === 'clear' ? 'Limpar' : KEYS[i] === 'back' ? 'Apagar' : KEYS[i];
-      var key = S.el(root, { x: 104 + (i % 3) * 176, y: 430 + Math.floor(i / 3) * 100, w: 160, h: 84, text: label, className: 'pin-key', css: 'line-height:80px;font-size:' + (label.length > 1 ? '20px' : '32px') });
+      var key = S.el(root, { x: 104 + (i % 3) * 176, y: 430 + Math.floor(i / 3) * 100, w: 160, h: 84, text: label, className: 'pin-key premium-key', css: 'line-height:80px;font-size:' + (label.length > 1 ? '20px' : '32px') });
       (function (index) { key.addEventListener('click', function () { self.keyIndex = index; self.pressKey(); }); }(i));
       this.keyNodes.push(key);
     }
-    S.label(root, { x: 104, y: 956, w: 560, h: 28, text: 'VERDE sincronizar lista   •   AMARELO código do servidor', size: 18, color: '0x63728AFF' });
+    S.label(root, { x: 104, y: 956, w: 560, h: 28, text: 'Voltar   •   Ajustes', size: 18, color: '0x63728AFF' });
 
-    S.el(root, { x: 704, y: 180, w: 1152, h: 830, className: 'panel', css: 'background:#0d1422' });
+    S.el(root, { x: 704, y: 180, w: 1152, h: 830, className: 'premium-card' });
     this.listTitle = S.label(root, { x: 744, y: 212, w: 1072, h: 28, size: 18, weight: 700, color: '0x00D7FFFF', css: 'letter-spacing:0.08em' });
     this.lockedHint = S.label(root, { x: 744, y: 262, w: 1072, h: 34, size: 24, text: 'Digite o PIN para gerenciar categorias.' });
     this.rows = [];
     for (var r = 0; r < LIST_ROWS; r++) {
-      var row = S.el(root, { x: 724, y: LIST_Y + r * LIST_STRIDE, w: 1112, h: 40, className: 'row-item', css: 'padding:0 20px;font-size:22px;border-radius:10px' });
-      row.innerHTML = '<span class="icon" style="width:22px;height:22px;flex:none"></span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span><span style="font-size:16px;font-weight:700;letter-spacing:0.08em"></span>';
+      var row = S.el(root, { x: 724, y: LIST_Y + r * LIST_STRIDE, w: 1112, h: 40, className: 'premium-row compact lock-row' });
+      row.innerHTML = '<span class="icon" style="width:22px;height:22px;flex:none"></span><span class="pr-label"></span><span class="pr-badge"></span><span class="pr-state"></span>';
       this.rows.push(row);
     }
     this.scopeStatus = S.label(root, { x: 744, y: 940, w: 1072, h: 56, size: 20, lineHeight: 28, lines: 2, color: '0x8894A8FF', text: 'Bloqueios são separados por lista ativa.' });
@@ -115,13 +113,17 @@
     }
     if (this.keypadActive()) return this.handleKeypad(key);
     if (key === 'left' || key === 'right') { this.mode = this.mode === 'categories' ? 'items' : 'categories'; this.selected = 0; this.renderLocks(); return true; }
-    var list = this.mode === 'items' ? this.items : this.categories;
+    var list = this.mode === 'items' ? this.items : ['__adult__'].concat(this.categories);
     if (key === 'down' && this.selected < list.length - 1) { this.selected++; this.renderLocks(); return true; }
     if (key === 'up' && this.selected > 0) { this.selected--; this.renderLocks(); return true; }
     if (key === 'OK' && list.length) {
-      if (this.mode === 'categories') {
-        var cat = this.categories[this.selected];
-        this.status.textContent = (P.toggleCategory(cat) ? 'Categoria bloqueada: ' : 'Categoria desbloqueada: ') + cat;
+      if (this.mode === 'categories' && this.selected === 0) {
+        P.setAdultProtection(!P.adultProtection());
+        this.status.textContent = P.adultProtection() ? 'Categorias adultas protegidas automaticamente.' : 'Proteção automática de conteúdo adulto desligada.';
+      } else if (this.mode === 'categories') {
+        var cat = this.categories[this.selected - 1];
+        var nowLocked = P.toggleCategory(cat);
+        this.status.textContent = (nowLocked ? 'Categoria bloqueada: ' : 'Categoria liberada: ') + cat + (P.isAutoCategory(cat) ? (nowLocked ? ' (regra automática)' : ' (exceção salva)') : '');
       } else {
         var item = this.items[this.selected];
         this.status.textContent = (P.toggleItem(item.id) ? 'Item bloqueado: ' : 'Item desbloqueado: ') + EP.displayTitle(item.title);
@@ -221,8 +223,9 @@
   ParentalView.prototype.renderLocks = function () {
     this.updateKeyFocus();
     var unlocked = P.sessionUnlocked();
-    var entries = this.mode === 'items' ? this.items : this.categories;
-    this.listTitle.textContent = this.mode === 'items' ? 'CANAIS E TÍTULOS' : 'CATEGORIAS DA LISTA';
+    var entries = this.mode === 'items' ? this.items : ['__adult__'].concat(this.categories);
+    var protectedCount = P.protectedCount(this.categories);
+    this.listTitle.textContent = this.mode === 'items' ? 'CANAIS E TÍTULOS' : 'CATEGORIAS DA LISTA   •   ' + protectedCount + (protectedCount === 1 ? ' PROTEGIDA' : ' PROTEGIDAS');
     S.show(this.lockedHint, !unlocked || !entries.length);
     this.lockedHint.textContent = !unlocked ? 'Digite o PIN para gerenciar categorias.' : 'Nenhum item recebido da lista atual.';
     var catLocks = P.categoryLocks(), itemLocks = P.itemLocks();
@@ -232,12 +235,26 @@
       var row = this.rows[r], entry = unlocked ? entries[first + r] : null;
       row.style.display = entry === undefined || entry === null ? 'none' : 'flex';
       if (!entry) continue;
+      if (entry === '__adult__') {
+        var on = P.adultProtection();
+        row.children[0].innerHTML = EP.iconSvg('lock');
+        row.children[0].style.color = on ? '#00d7ff' : '#63728a';
+        row.children[1].textContent = 'Proteger conteúdo adulto';
+        row.children[2].style.display = 'none';
+        row.children[3].textContent = on ? 'LIGADO' : 'DESLIGADO';
+        row.children[3].style.color = on ? '#00d7ff' : '#63728a';
+        S.focus(row, first + r === this.selected && this.hasFocus);
+        continue;
+      }
       var locked = this.mode === 'items' ? P.isItemLocked(entry.id, itemLocks) : P.isCategoryLocked(entry, catLocks);
+      var auto = this.mode !== 'items' && P.isAutoCategory(entry);
       row.children[0].innerHTML = EP.iconSvg(locked ? 'lock' : 'check');
       row.children[0].style.color = locked ? '#ff5c72' : '#16c784';
       row.children[1].textContent = this.mode === 'items' ? EP.displayTitle(entry.title) : entry;
-      row.children[2].textContent = locked ? 'BLOQUEADO' : 'LIBERADO';
-      row.children[2].style.color = locked ? '#ff5c72' : '#63728a';
+      row.children[2].textContent = 'Automática';
+      row.children[2].style.display = auto && locked ? 'inline-block' : 'none';
+      row.children[3].textContent = locked ? 'BLOQUEADO' : 'LIBERADO';
+      row.children[3].style.color = locked ? '#ff5c72' : '#63728a';
       S.focus(row, first + r === this.selected && this.hasFocus);
     }
     if (unlocked) this.scopeStatus.textContent = '←/→ alternar modo   •   ↑/↓ selecionar   •   OK bloquear/desbloquear   •   ' + EP.OPTIONS_LABEL + ' alterar PIN';

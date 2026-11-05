@@ -254,6 +254,12 @@
     });
   };
 
+  MainScene.prototype.openList = function (opts) {
+    if (this.dialog && !this.dialog.closed) this.dialog.close();
+    this.dialog = new EP.ListDialog(this.stage, opts);
+    return this.dialog;
+  };
+
   MainScene.prototype.openKeyboard = function (opts) {
     if (this.dialog && !this.dialog.closed) this.dialog.close();
     this.dialog = new EP.KeyboardDialog(this.stage, opts);

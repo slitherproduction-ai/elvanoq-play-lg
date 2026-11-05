@@ -23,6 +23,7 @@
     else if (item.type === 'movies' && item.stream_url) { var m = /\.([a-z0-9]{2,5})(?:\?|$)/i.exec(item.stream_url); if (m) safe.ext = m[1]; }
     if (item.series_title) safe.series_title = String(item.series_title).slice(0, 200);
     if (item.tvg) safe.tvg = item.tvg; else if (item.tvg_id) safe.tvg = item.tvg_id;
+    if (item.archive_days > 0 || item.arc > 0) safe.arc = Math.min(60, item.archive_days || item.arc);
     if (item.logo && String(item.logo).length <= 300 && String(item.logo).indexOf('/player_api.php') === -1) safe.logo = item.logo;
     return safe;
   }

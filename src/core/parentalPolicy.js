@@ -5,6 +5,8 @@
 (function (EP) {
   'use strict';
   var R = EP.Registry;
+  // Android 2.17.21: categorias adultas protegidas automaticamente (nome em minúsculas).
+  var ADULT = new RegExp('(^|[^a-z0-9\u00C0-\u024F])(x{3,}|porn[a-z\u00C0-\u024F]*|adult[oa]s?|adults?|hentai|er[o\u00F3]tic[a-z\u00C0-\u024F]*|playboy|sexy ?hot|nsfw|\\+ ?18|18 ?\\+)(?![a-z0-9\u00C0-\u024F])', 'i');
 
   var Parental = EP.Parental = {
     scopeKey: function () {
@@ -51,11 +53,33 @@
     resetFailures: function () { R.write('parental_fail_count', '0'); },
     categoryLocks: function () { var v = R.readJson(Parental.scopeKey(), []); return v && v.length !== undefined ? v : []; },
     itemLocks: function () { var v = R.readJson(Parental.itemScopeKey(), []); return v && v.length !== undefined ? v : []; },
+    isAdultName: function (name) { return ADULT.test(EP.lower(name)); },
+    adultProtection: function () { return R.read('parental_adult_protect') !== '0'; },
+    setAdultProtection: function (on) { R.write('parental_adult_protect', on ? '1' : '0'); },
+    /* Categoria protegida pela regra automática (sem exceção gravada). */
+    isAutoCategory: function (category) { return Parental.adultProtection() && Parental.isAdultName(category); },
     isCategoryLocked: function (category, locks) {
       locks = locks || Parental.categoryLocks();
-      var needle = EP.lower(category);
-      for (var i = 0; i < locks.length; i++) if (EP.lower(locks[i]) === needle) return true;
+      var needle = EP.lower(category), exception = '!' + needle;
+      var auto = Parental.isAutoCategory(category);
+      for (var i = 0; i < locks.length; i++) {
+        var lock = EP.lower(locks[i]);
+        if (lock === needle) return true;
+        if (auto && lock === exception) return false; // liberada pelo responsável
+      }
+      return auto;
+    },
+    /* Liberar uma automática grava "!<categoria>"; liberar de novo volta à regra. */
+    hasException: function (category, locks) {
+      locks = locks || Parental.categoryLocks();
+      var exception = '!' + EP.lower(category);
+      for (var i = 0; i < locks.length; i++) if (EP.lower(locks[i]) === exception) return true;
       return false;
+    },
+    protectedCount: function (categories) {
+      var locks = Parental.categoryLocks(), n = 0;
+      for (var i = 0; i < (categories || []).length; i++) if (Parental.isCategoryLocked(categories[i], locks)) n++;
+      return n;
     },
     isItemLocked: function (id, locks) {
       locks = locks || Parental.itemLocks();
@@ -72,9 +96,21 @@
       return Parental.isItemLocked(id);
     },
     toggleCategory: function (category) {
+      if (Parental.isAutoCategory(category)) {
+        var current = Parental.categoryLocks(), kept = [], exception = '!' + EP.lower(category), had = false;
+        for (var j = 0; j < current.length; j++) {
+          var lock = EP.lower(current[j]);
+          if (lock === exception) had = true;
+          else if (lock !== EP.lower(category)) kept.push(current[j]);
+        }
+        if (!had) kept.push('!' + category);
+        R.writeJson(Parental.scopeKey(), kept);
+        return had; // true = bloqueada de novo pela regra
+      }
       var locks = Parental.categoryLocks(), next = [], removed = false;
       for (var i = 0; i < locks.length; i++) {
-        if (EP.lower(locks[i]) === EP.lower(category)) removed = true; else next.push(locks[i]);
+        if (EP.lower(locks[i]) === EP.lower(category)) removed = true;
+        else if (EP.lower(locks[i]) !== '!' + EP.lower(category)) next.push(locks[i]);
       }
       if (!removed) next.push(category);
       R.writeJson(Parental.scopeKey(), next);

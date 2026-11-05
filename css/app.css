@@ -54,10 +54,12 @@ html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
 .sg-label.bold, .w700 { font-weight: 700; }
 .w600 { font-weight: 600; }
 .w500 { font-weight: 500; }
-.clamp2, .clamp3, .clamp4 { display: -webkit-box !important; -webkit-box-orient: vertical; white-space: normal; }
+.clamp2, .clamp3, .clamp4, .clamp5, .clamp6 { display: -webkit-box !important; -webkit-box-orient: vertical; white-space: normal; }
 .clamp2 { -webkit-line-clamp: 2; }
 .clamp3 { -webkit-line-clamp: 3; }
 .clamp4 { -webkit-line-clamp: 4; }
+.clamp5 { -webkit-line-clamp: 5; }
+.clamp6 { -webkit-line-clamp: 6; }
 .eyebrow { font-size: 18px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
 .muted { color: var(--muted); }
 .over-video { text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9); }
@@ -81,7 +83,7 @@ video.sg-video::-webkit-media-controls { display: none !important; }
   position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 12px;
   height: 64px; padding: 0 30px; border-radius: 14px; font-size: 25px; font-weight: 700; white-space: nowrap;
   color: var(--text); background: var(--surface-alt); border: 2px solid rgba(244, 248, 255, 0.10);
-  transition: transform 160ms var(--ease), background-color 160ms, box-shadow 160ms;
+  transition: transform 160ms var(--ease);
 }
 .btn .icon { width: 24px; height: 24px; flex: none; }
 .btn span { overflow: hidden; text-overflow: ellipsis; }
@@ -95,7 +97,7 @@ video.sg-video::-webkit-media-controls { display: none !important; }
 .sg-tile, .poster {
   background-color: var(--surface); background-size: cover; background-position: center; background-repeat: no-repeat;
   border-radius: 14px; border: 1px solid var(--border); overflow: hidden;
-  transition: transform 180ms var(--ease), box-shadow 180ms, border-color 180ms;
+  transition: transform 180ms var(--ease);
 }
 .sg-tile .tile-fallback, .poster .tile-fallback {
   position: absolute; left: 14px; right: 14px; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; text-align: center;
@@ -116,7 +118,7 @@ video.sg-video::-webkit-media-controls { display: none !important; }
 .hub-tile {
   position: absolute; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
   border-radius: 16px; background: var(--surface); border: 1px solid rgba(190, 222, 255, 0.07);
-  transition: transform 180ms var(--ease), box-shadow 180ms, background 180ms;
+  transition: transform 180ms var(--ease);
 }
 .hub-tile { justify-content: flex-start; padding-top: 24px; gap: 10px; }
 .hub-tile .icon { width: 64px; height: 64px; color: #fff; }
@@ -219,3 +221,33 @@ video.sg-video::-webkit-media-controls { display: none !important; }
 /* Splash de abertura (splash_fhd do Roku): cobre a tela até o app ficar pronto */
 #boot-splash { position: fixed; left: 0; top: 0; width: 100%; height: 100%; z-index: 100; background: #02070d url(../images/splash.jpg) center / cover no-repeat; transition: opacity 320ms ease-out; }
 #boot-splash.hidden { opacity: 0; }
+
+/* ---------- 1.1.0: páginas premium (Ajustes, Controle parental,
+ * Categorias visíveis, Diagnóstico, Sobre). Animações só com transform e
+ * opacity, para não travar webOS 4/5. ---------- */
+.premium-glow { position: absolute; background: linear-gradient(rgba(20, 125, 255, 0.22), rgba(20, 125, 255, 0)); pointer-events: none; }
+.premium-card { position: absolute; box-sizing: border-box; border-radius: 16px; background: rgba(13, 20, 34, 0.72); border: 1px solid rgba(190, 222, 255, 0.10); }
+.premium-row { position: absolute; box-sizing: border-box; display: flex; align-items: center; gap: 20px; padding: 0 28px; border-radius: 16px; background: rgba(13, 20, 34, 0.72); border: 1px solid rgba(190, 222, 255, 0.10); color: var(--text); font-size: 24px; transition: transform 160ms ease-out; }
+.premium-row.compact { border-radius: 12px; padding: 0 20px; font-size: 22px; background: transparent; border-color: transparent; gap: 16px; }
+.premium-row.focused { border: 2px solid #00d7ff; padding-left: 27px; padding-right: 27px; transform: scale(1.01); }
+.premium-row.compact.focused { padding-left: 19px; padding-right: 19px; background: rgba(20, 125, 255, 0.12); transform: none; }
+.premium-row.dimmed .pr-label { opacity: 0.55; }
+.premium-row .pr-icon { width: 34px; height: 34px; flex: none; color: #00d7ff; }
+.premium-row .pr-icon svg, .pr-bigicon svg { width: 100%; height: 100%; }
+.premium-row .pr-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.premium-row .pr-title { font-size: 25px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.premium-row .pr-sub { font-size: 18px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.premium-row .pr-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.premium-row .pr-meta { flex: none; font-size: 20px; color: #b8c4d6; white-space: nowrap; }
+.premium-row .pr-chev { width: 22px; height: 22px; flex: none; color: var(--muted); }
+.premium-row .pr-badge { flex: none; font-size: 15px; font-weight: 700; letter-spacing: 0.06em; color: #00d7ff; border: 1px solid rgba(0, 215, 255, 0.45); border-radius: 999px; padding: 4px 12px; }
+.premium-row .pr-state { flex: none; min-width: 120px; text-align: right; font-size: 16px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #00d7ff; }
+.premium-row .pr-state.off { color: #63728a; }
+.pr-bigicon { position: absolute; color: #00d7ff; }
+.premium-tab { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 999px; font-size: 21px; font-weight: 600; color: var(--muted); background: rgba(13, 20, 34, 0.72); border: 1px solid rgba(190, 222, 255, 0.10); }
+.premium-tab.active { background: #f4f8ff; color: #070b14; border-color: #f4f8ff; }
+.premium-button { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 999px; font-size: 22px; font-weight: 600; background: rgba(13, 20, 34, 0.72); border: 1px solid rgba(190, 222, 255, 0.10); color: var(--text); }
+.premium-button.focused { background: #f4f8ff; color: #070b14; border-color: #f4f8ff; }
+.premium-key { background: rgba(13, 20, 34, 0.72); border: 1px solid rgba(190, 222, 255, 0.10); box-shadow: none; }
+.premium-key.focused { background: #f4f8ff; color: #070b14; border: 2px solid #00d7ff; box-shadow: none; transform: scale(1.03); }
+.lock-row .icon svg { width: 100%; height: 100%; }

@@ -70,7 +70,7 @@
     this.lazy = false; this.isLoading = false; this.loadError = ''; this.favoriteChannels = []; this.loadingCategoryId = '';
     this.localState = LS.load();
     this.requestTimer = new EP.Timer(0.35, false, function () { self.requestCurrentCategory(); });
-    this.preview.addEventListener('playing', function () { if (self.previewing) { S.show(self.previewIcon, false); S.show(self.liveBadge, true); } });
+    this.preview.addEventListener('playing', function () { if (self.previewing) { S.show(self.previewIcon, false); S.show(self.liveBadge, true); EP.LiveFormat.remember(EP.LiveFormat.formatOf(self.preview.src)); } });
     this.preview.addEventListener('error', function () { if (self.previewing) { self.previewHint.textContent = 'Não foi possível iniciar a prévia deste canal.'; } });
   }
 
@@ -212,7 +212,13 @@
     if (key === 'left') { this.focusColumn = 'categories'; this.updateFocus(); return true; }
     if (key === 'right') { if (this.focusColumn === 'categories') { this.focusColumn = 'channels'; this.updateFocus(); } else this.playSelected(); return true; }
     if (key === 'OK') { if (this.focusColumn === 'categories') { this.focusColumn = 'channels'; this.updateFocus(); } else this.openSelected(); return true; }
-    if (key === 'options') { this.toggleFavorite(); return true; }
+    if (key === 'options') {
+      var current = this.visibleChannels[this.selectedIndex];
+      // Canal com arquivo: AZUL abre as opções (favorito + rever programas).
+      if (current && current.archive_days > 0) this.events.emit('optionsRequested', { item: current });
+      else this.toggleFavorite();
+      return true;
+    }
     return true;
   };
 
@@ -233,7 +239,7 @@
     if (!this.visibleChannels.length) return;
     var self = this, selected = this.visibleChannels[this.selectedIndex];
     this.previewTitle.textContent = EP.displayTitle(selected.title);
-    if (!this.previewing) this.previewHint.textContent = '→ prévia   •   OK tela cheia   •   ' + EP.OPTIONS_LABEL + ' favorito';
+    if (!this.previewing) this.previewHint.textContent = '→ prévia   •   OK tela cheia   •   ' + EP.OPTIONS_LABEL + (selected.archive_days > 0 ? ' opções e rever programas' : ' favorito');
     var guide = this.epg.guideFor(selected);
     if (guide.now) {
       this.epgNow.textContent = G.programmeLabel(guide.now);
@@ -260,7 +266,7 @@
     var selected = this.visibleChannels[this.selectedIndex];
     if (P.isBlockedItem(selected.category, selected.id)) { this.previewHint.textContent = 'Conteúdo protegido. Valide o PIN em Ajustes para continuar.'; return; }
     this.previewing = true;
-    this.preview.src = selected.stream_url;
+    this.preview.src = EP.LiveFormat.apply(selected.stream_url);
     var attempt = this.preview.play();
     if (attempt && attempt.catch) attempt.catch(function () {});
     this.previewHint.textContent = 'Prévia em execução   •   OK para assistir em tela cheia';

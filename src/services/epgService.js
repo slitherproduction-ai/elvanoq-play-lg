@@ -54,6 +54,17 @@
     }, function () { delete self.pending[item.stream_id]; });
   };
 
+  /* Programas para rever (get_simple_data_table), só para canais com arquivo. */
+  EpgService.prototype.archive = function (item, callback) {
+    var source = this.source;
+    if (!item || !(item.archive_days > 0) || !source || source.kind !== 'xtream' || item.stream_id == null) { callback({ ok: false, items: [] }); return; }
+    var url = EP.PlaylistRules.buildXtreamApiUrl(source.host, source.username, source.password, 'get_simple_data_table', { stream_id: item.stream_id });
+    EP.Http.get(url, 20000).then(function (response) {
+      var ok = response.status >= 200 && response.status < 300;
+      callback({ ok: ok, items: ok ? EP.CatchupRules.archiveProgrammes(EP.Http.json(response), item.archive_days) : [] });
+    }, function () { callback({ ok: false, items: [] }); });
+  };
+
   EpgService.prototype.guideFor = function (item) {
     var list = this.programmes(item);
     return { now: list[0] || null, next: list[1] || null };

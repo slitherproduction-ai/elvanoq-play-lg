@@ -3,10 +3,15 @@
  * 10s↷ / Áudio / Legendas, zapping ↑/↓ no ao vivo, guia now/next,
  * reconexão automática (3x), pular abertura, próximo episódio em 6s e
  * gravação de progresso a cada 30s.
+ * 1.1.0 (Android 2.17.21): retomada automática quando o vídeo trava
+ * (12 s ao vivo / 20 s filme, até 3 tentativas), formato do ao vivo lembrado
+ * por lista e rever programas com três formatos de catch-up.
  */
 (function (EP) {
   'use strict';
-  var S = EP.Stage, LS = EP.LocalState, P = EP.Parental, F = EP.StreamFormat, G = EP.EpgRules;
+  var S = EP.Stage, LS = EP.LocalState, P = EP.Parental, F = EP.StreamFormat, G = EP.EpgRules, LF = EP.LiveFormat;
+  var WATCH_MS = 4000, STALL_LIVE_MS = 12000, STALL_VOD_MS = 20000, STALL_RETRIES = 3;
+  var STALL_TEXT = 'O sinal parou de chegar. Reconectando…';
 
   function PlayerView(parent) {
     var root = this.root = S.group(parent, { className: 'layer', visible: false });
@@ -64,12 +69,16 @@
   PlayerView.prototype.isVisible = function () { return S.isVisible(this.root); };
   PlayerView.prototype.isPlaying = function () { return !this.video.paused && !this.video.ended && this.video.readyState > 2; };
   PlayerView.prototype.isLive = function () { return !!(this.content && this.content.liveQueue && this.content.liveQueue.length); };
+  PlayerView.prototype.isCatchup = function () { return !!(this.content && this.content.catchupUrls && this.content.catchupUrls.length); };
   PlayerView.prototype.hasTimeline = function () { var d = this.video.duration; return !this.isLive() && isFinite(d) && d > 0; };
 
   PlayerView.prototype.bindVideo = function () {
     var self = this, v = this.video;
     v.addEventListener('playing', function () {
       self.liveRetries = 0;
+      self.userPaused = false;
+      if (self.isLive()) LF.remember(LF.formatOf(self.currentUrl)); // "Automático": lembra o que abriu
+      if (self.hint.textContent === STALL_TEXT) self.hint.textContent = self.defaultHint();
       S.setButton(self.controlLabels[1], '', 'Pausar');
       if (self.shouldRestorePosition && self.content.resumePosition > 0) {
         try { v.currentTime = self.content.resumePosition; } catch (_) {}
@@ -79,12 +88,16 @@
       self.refreshTrackStatus();
       self.showOsd();
     });
-    v.addEventListener('pause', function () { if (!v.ended) { S.setButton(self.controlLabels[1], '', 'Retomar'); self.showOsd(); } });
-    v.addEventListener('waiting', function () { self.hint.textContent = 'Carregando stream…'; self.showOsd(); });
+    v.addEventListener('pause', function () { if (!v.ended && !self.failed) { S.setButton(self.controlLabels[1], '', 'Retomar'); self.showOsd(); } });
+    v.addEventListener('waiting', function () { if (self.hint.textContent !== STALL_TEXT) self.hint.textContent = 'Carregando stream…'; self.showOsd(); });
     v.addEventListener('timeupdate', function () { self.onPositionChanged(); });
-    v.addEventListener('loadedmetadata', function () { self.refreshTrackStatus(); });
+    v.addEventListener('loadedmetadata', function () {
+      self.refreshTrackStatus();
+      // Retomada depois de travar: volta à última posição do filme/episódio.
+      if (self.pendingSeek > 0) { try { v.currentTime = self.pendingSeek; } catch (_) {} self.pendingSeek = 0; }
+    });
     v.addEventListener('ended', function () { self.onFinished(); });
-    v.addEventListener('error', function () { self.onError(); });
+    v.addEventListener('error', function () { self.onLoadError(self.loadToken); });
   };
 
   PlayerView.prototype.defaultHint = function () {
@@ -107,6 +120,10 @@
     this.lastPersistedSecond = -30;
     this.shouldRestorePosition = content.resumePosition > 0;
     this.liveRetries = 0;
+    this.catchupIndex = 0;
+    this.pendingSeek = 0;
+    this.userPaused = false;
+    this.lastGoodPosition = content.resumePosition || 0;
     this.retryTimer.stop();
     this.selectedControl = 1; this.updateControlFocus();
     if (P.isBlockedItem(content.category, content.id)) {
@@ -115,7 +132,11 @@
       this.showOsd();
       return;
     }
-    this.load(content.streamUrl);
+    var url = content.streamUrl;
+    if (this.isCatchup()) { url = content.catchupUrls[0]; this.nowPlaying.textContent = 'REVENDO'; }
+    else if (this.isLive()) url = LF.apply(url);
+    this.load(url);
+    this.startWatchdog();
     this.hint.textContent = this.defaultHint();
     if (this.isLive()) this.renderLiveGuide(); else S.show(this.liveGuideLabel, false);
     this.updateTimeline();
@@ -125,11 +146,15 @@
   PlayerView.prototype.load = function (url) {
     var v = this.video;
     this.currentUrl = url;
+    // Libera o decoder da TV antes de trocar a fonte: pause, sem src, load().
     try { v.pause(); } catch (_) {}
     v.removeAttribute('src');
     while (v.firstChild) v.removeChild(v.firstChild);
-    var source = document.createElement('source');
+    try { v.load(); } catch (_) {}
+    var source = document.createElement('source'), self = this, token = this.loadToken = {};
     source.src = url;
+    // Com <source>, a falha chega no próprio <source> (o <video> não dispara 'error').
+    source.addEventListener('error', function () { self.onLoadError(token); });
     var mime = F.mimeForUrl(url);
     if (mime && mime !== 'video/mp2t' && mime !== 'video/x-matroska') source.type = mime;
     v.appendChild(source);
@@ -153,9 +178,27 @@
     if (S.isVisible(this.osd)) this.renderLiveGuide();
   };
 
+  /* Uma falha por carregamento, venha do <video> ou do <source>. */
+  PlayerView.prototype.onLoadError = function (token) {
+    if (!token || token !== this.loadToken || token.failed) return;
+    token.failed = true;
+    this.onError();
+  };
+
   PlayerView.prototype.onError = function () {
     if (!this.content) return;
     var self = this;
+    if (this.isCatchup()) {
+      // Próximo formato de catch-up; sem cair para o ao vivo.
+      if (this.catchupIndex < this.content.catchupUrls.length - 1) {
+        this.catchupIndex++;
+        this.hint.textContent = 'Tentando outro formato para rever…';
+        this.load(this.content.catchupUrls[this.catchupIndex]);
+        return;
+      }
+      this.showFatal('Este programa não está disponível para rever.');
+      return;
+    }
     if (this.isLive() && this.liveRetries < 3) {
       this.liveRetries++;
       this.hint.textContent = 'Reconectando ao canal… (' + this.liveRetries + '/3)';
@@ -163,16 +206,69 @@
       this.retryTimer.start();
       return;
     }
-    this.hint.textContent = 'Não foi possível reproduzir este conteúdo. Tente novamente.';
+    this.showFatal('Não foi possível reproduzir este conteúdo. Tente novamente.');
+  };
+
+  /* Tela de erro: a OSD fica visível com o controle "Tentar" em foco. */
+  PlayerView.prototype.showFatal = function (message) {
+    var self = this;
+    this.stopWatchdog();
+    this.failed = true;
+    this.hint.textContent = message;
     S.setButton(this.controlLabels[1], '', 'Tentar');
+    this.selectedControl = 1; this.updateControlFocus();
     this.showOsd();
     setTimeout(function () { self.osdTimer.stop(); }, 0);
   };
 
+  /* ---------- retomada automática quando o vídeo trava ----------
+   * Um único setInterval de 4 s enquanto o player está aberto. Conta como
+   * travado quando currentTime não avança por 12 s (ao vivo) ou 20 s (filme),
+   * sem pausa do usuário e com a tela visível. */
+  PlayerView.prototype.startWatchdog = function () {
+    var self = this;
+    this.stopWatchdog();
+    this.failed = false;
+    this.stallRetries = 0;
+    this.lastTime = -1;
+    this.lastProgressAt = Date.now();
+    this.watchdog = setInterval(function () { self.watchTick(); }, WATCH_MS);
+  };
+
+  PlayerView.prototype.stopWatchdog = function () {
+    if (this.watchdog) clearInterval(this.watchdog);
+    this.watchdog = null;
+  };
+
+  PlayerView.prototype.watchTick = function () {
+    var v = this.video, now = Date.now();
+    if (!this.content || this.failed || this.awaitingNextEpisode) { this.lastProgressAt = now; return; }
+    var hidden = typeof document.visibilityState === 'string' && document.visibilityState !== 'visible';
+    if (this.userPaused || v.ended || hidden) { this.lastProgressAt = now; this.lastTime = v.currentTime; return; }
+    if (v.currentTime > this.lastTime + 0.25) {
+      if (this.stallRetries && this.hint.textContent === STALL_TEXT) this.hint.textContent = this.defaultHint();
+      this.lastTime = v.currentTime;
+      this.lastProgressAt = now;
+      this.stallRetries = 0; // voltou a avançar
+      if (!this.isLive() && v.currentTime > 1) this.lastGoodPosition = v.currentTime;
+      return;
+    }
+    if (now - this.lastProgressAt < (this.isLive() ? STALL_LIVE_MS : STALL_VOD_MS)) return;
+    if (this.stallRetries >= STALL_RETRIES) { this.showFatal('O sinal não voltou. Confira a internet e tente de novo.'); return; }
+    this.stallRetries++;
+    this.lastProgressAt = now;
+    this.hint.textContent = STALL_TEXT;
+    this.showOsd();
+    this.osdTimer.stop();
+    this.pendingSeek = this.isLive() ? 0 : Math.max(this.lastGoodPosition || 0, this.lastTime || 0);
+    this.load(this.currentUrl);
+  };
+
   PlayerView.prototype.onRetryTimer = function () {
     if (!this.isLive() || !this.content) return;
-    // 1ª reconexão em .ts tenta a variante HLS do mesmo canal Xtream.
-    var alternative = this.liveRetries === 1 ? F.hlsAlternative(this.currentUrl) : '';
+    // No "Automático", a 1ª reconexão troca HLS <-> TS do mesmo canal Xtream;
+    // o formato que abrir fica lembrado para a lista. A escolha manual vence.
+    var alternative = this.liveRetries === 1 && LF.mode() === 'auto' ? (LF.alternative(this.currentUrl) || F.hlsAlternative(this.currentUrl)) : '';
     this.load(alternative || this.currentUrl);
   };
 
@@ -304,13 +400,16 @@
 
   PlayerView.prototype.togglePlayPause = function (key) {
     var v = this.video;
-    if (v.error || /Não foi possível/.test(this.hint.textContent)) {
+    if (this.failed || v.error || /Não foi possível|não está disponível|não voltou/.test(this.hint.textContent)) {
       this.hint.textContent = 'Tentando reconectar ao stream…';
       this.liveRetries = 0;
-      this.load(this.currentUrl);
-    } else if (key === 'pause' || (!v.paused && key !== 'play')) v.pause();
-    else if (v.paused) { var attempt = v.play(); if (attempt && attempt.catch) attempt.catch(function () {}); }
-    else v.pause();
+      this.catchupIndex = 0;
+      this.pendingSeek = this.isLive() ? 0 : (this.lastGoodPosition || 0);
+      this.load(this.isCatchup() ? this.content.catchupUrls[0] : this.currentUrl);
+      this.startWatchdog();
+    } else if (key === 'pause' || (!v.paused && key !== 'play')) { this.userPaused = true; v.pause(); }
+    else if (v.paused) { this.userPaused = false; var attempt = v.play(); if (attempt && attempt.catch) attempt.catch(function () {}); }
+    else { this.userPaused = true; v.pause(); }
     this.showOsd();
   };
 
@@ -400,6 +499,7 @@
   };
 
   PlayerView.prototype.stopPlayback = function () {
+    this.stopWatchdog();
     this.retryTimer.stop();
     this.osdTimer.stop();
     this.nextEpisodeTimer.stop();

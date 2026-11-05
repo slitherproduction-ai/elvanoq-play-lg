@@ -178,7 +178,7 @@
     for (var i = 0; i < body.length; i++) {
       var item = body[i];
       if (!item || item.stream_id == null) continue;
-      out.push({ id: 'xtream:' + item.stream_id, stream_id: item.stream_id, type: 'live', title: text(item.name) || 'Canal', category: categoryOf(item, names, 'Ao vivo'), logo: text(item.stream_icon) || '', tvg_id: text(item.epg_channel_id) || '', added_at: epochToIso(item.added), stream_url: base + '/live/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + encodeURIComponent(item.stream_id) + '.' + (liveExtension || text(item.container_extension) || 'ts') });
+      out.push({ id: 'xtream:' + item.stream_id, stream_id: item.stream_id, type: 'live', title: text(item.name) || 'Canal', category: categoryOf(item, names, 'Ao vivo'), logo: text(item.stream_icon) || '', tvg_id: text(item.epg_channel_id) || '', archive_days: String(item.tv_archive) === '1' ? Math.max(1, parseInt(item.tv_archive_duration, 10) || 1) : 0, added_at: epochToIso(item.added), stream_url: base + '/live/' + encodeURIComponent(username) + '/' + encodeURIComponent(password) + '/' + encodeURIComponent(item.stream_id) + '.' + (liveExtension || text(item.container_extension) || 'ts') });
     }
     return out;
   }
@@ -230,7 +230,7 @@
    * carregada — mesma ideia do xtreamItemFromSaved do Roku. Nunca há URL salva. */
   function xtreamItemFromSaved(cred, saved, liveExtension) {
     if (!cred || !saved || !saved.sid || !saved.kind) return null;
-    var stream = { name: saved.title || '', stream_id: saved.sid, series_id: saved.sid, stream_icon: saved.logo || '', cover: saved.logo || '', container_extension: saved.ext || '', epg_channel_id: saved.tvg || '', category_name: saved.category || '' };
+    var stream = { name: saved.title || '', stream_id: saved.sid, series_id: saved.sid, stream_icon: saved.logo || '', cover: saved.logo || '', container_extension: saved.ext || '', epg_channel_id: saved.tvg || '', category_name: saved.category || '', tv_archive: saved.arc ? 1 : 0, tv_archive_duration: saved.arc || 0 };
     var item = xtreamCategoryItems(saved.kind, cred.host, cred.username, cred.password, [stream], saved.category || '', liveExtension, 1)[0];
     if (!item) return null;
     item.id = saved.id;

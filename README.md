@@ -2,6 +2,10 @@
 
 Repositório independente do aplicativo Android. Ele contém exclusivamente o app webOS empacotável em `.ipk` e reutiliza somente os contratos públicos existentes do Portal ELVANOQ.
 
+## Versão 1.1.0 — paridade com o Android 2.17.21
+
+Retomada automática quando o vídeo trava, formato do ao vivo lembrado por lista, rever programas (catch-up), proteção automática de conteúdo adulto, categorias visíveis e Ajustes premium. Veja [CHANGELOG.md](CHANGELOG.md) e [TESTES_1.1.0.md](TESTES_1.1.0.md).
+
 ## Versão 1.0.1 — alinhada ao Roku 1.0.1
 
 Arte própria no splash e na ativação, aviso de teste encerrado sem link de pagamento, deep link e liberação de memória. Veja [CHECKPOINT_010_ROKU_1_0_1.md](CHECKPOINT_010_ROKU_1_0_1.md).
