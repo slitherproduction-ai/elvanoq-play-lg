@@ -23,6 +23,9 @@ jobs:
     steps:
       - name: Checkout approved source
         uses: actions/checkout@v4
+        with:
+          # não deixa o token do GitHub gravado em .git/config
+          persist-credentials: false
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -31,16 +34,31 @@ jobs:
         run: node scripts/validate-webos.mjs
       - name: Install webOS CLI
         run: npm install --global @webos-tools/cli
+      - name: Stage app files
+        shell: bash
+        # Empacota só o que o app usa. Nunca a pasta do repositório inteira:
+        # .git, .github, testes, scripts e documentos não vão para a TV/loja.
+        run: |
+          rm -rf build && mkdir -p build/app
+          cp -R appinfo.json index.html icon.png largeIcon.png splash.png css fonts images src build/app/
       - name: Package IPK
         shell: bash
         run: |
           mkdir -p dist
           if [ "${{ inputs.debug_package }}" = "true" ]; then
-            ares-package --no-minify --outdir dist .
+            ares-package --no-minify --outdir dist build/app
           else
-            ares-package --outdir dist .
+            ares-package --outdir dist build/app
           fi
           ares-package --info dist/*.ipk
+      - name: Check IPK contents
+        shell: bash
+        run: |
+          mkdir -p build/ipk && cd build/ipk && ar x ../../dist/*.ipk && tar -tzf data.tar.gz > ../files.txt
+          if grep -E '/(\.git|\.github|tests|scripts|dist|build)(/|$)|\.md$' ../files.txt; then
+            echo "::error::O IPK contém arquivos que não devem ir para a loja"; exit 1
+          fi
+          echo "Arquivos no IPK: $(grep -vc '/$' ../files.txt)"
       - name: Upload IPK artifact
         uses: actions/upload-artifact@v4
         with:
