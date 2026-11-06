@@ -1,5 +1,10 @@
 # Changelog — ELVANOQ Play LG webOS
 
+## 1.1.1 — 06/11/2026
+
+- Tela de ativação no padrão da nova tela de login do Android 2.17.23: logo com slogan ("Sua mídia. Sua experiência."), fundo novo, relógio, "Ative sua TV" com três passos, código da TV em destaque, botão branco "Entrar com código do servidor", atalhos "Verificar ativação" (consulta a licença na hora) e "Como ativar", QR code do Portal e rodapé com status e versão. Navegação por ↑/↓/←/→ e OK.
+- A chave do aparelho não aparece mais (na ativação e no topo de Ajustes): o Portal vincula a TV só pelo código.
+
 ## 1.1.0 — 04/11/2026 (paridade com o Android 2.17.21)
 
 ### Reprodução

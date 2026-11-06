@@ -6,7 +6,7 @@
 (function (root) {
   'use strict';
   var EP = root.EP = root.EP || {};
-  EP.VERSION = '1.1.0';
+  EP.VERSION = '1.1.1';
 
   EP.text = function (value) {
     if (typeof value === 'number' && isFinite(value)) return String(value);

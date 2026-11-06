@@ -63,7 +63,7 @@
   };
   // Compatível com o AppShell (Ajustes recebe info e status).
   ParentalView.prototype.setInfo = function (info) {
-    this.setDeviceInfo(info && info.code ? 'TV ' + info.code + '   •   Chave ' + info.key + '   •   Licença ' + EP.lower(info.licenseLabel) : '');
+    this.setDeviceInfo(info && info.code ? 'TV ' + info.code + '   •   Licença ' + EP.lower(info.licenseLabel) : '');
   };
   ParentalView.prototype.setStatus = function (text) { if (text) this.status.textContent = text; };
 

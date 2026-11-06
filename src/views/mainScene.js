@@ -4,7 +4,8 @@
  * Diferenças obrigatórias do webOS, preservadas da versão 0.4.0:
  *  - consentimento explícito antes de consultar o LGUDID;
  *  - o Portal recebe só o SHA-256 da identidade e uma chave numérica local;
- *  - a tela mostra código e chave, exigidos em elvanoqplay.app.
+ *  - a tela mostra o código da TV, usado em elvanoqplay.app (1.1.1: a chave
+ *    deixou de aparecer; o Portal vincula pelo código).
  */
 (function (EP) {
   'use strict';
@@ -14,40 +15,50 @@
   function MainScene(stage) {
     var self = this;
     this.stage = stage;
-    // Mesmo layout do MainScene.xml do Roku 0.1.88: 3 passos, código em
-    // destaque com borda ciano, QR code, botão contornado e status pulsante.
+    // 1.1.1: mesmo padrão da tela de login do Android 2.17.23 (activation-
+    // chooser): logo com slogan, relógio, 3 passos, código em destaque, botão
+    // branco "Entrar com código do servidor", atalhos, QR e rodapé com status.
     var root = this.activation = S.group(stage, { className: 'layer' });
     S.rect(root, { x: 0, y: 0, w: 1920, h: 1080, color: '0x070B14FF' });
     S.poster(root, { x: 0, y: 0, w: 1920, h: 1080, uri: 'images/elvanoq-login-tv-backdrop.jpg' });
-    S.el(root, { x: 0, y: 0, w: 1920, h: 1080, css: 'background:rgba(7,11,20,0.30)' });
-    S.el(root, { x: 0, y: 0, w: 1920, h: 1080, css: 'background:linear-gradient(90deg,rgba(7,11,20,0.98) 0%,rgba(7,11,20,0.94) 38%,rgba(7,11,20,0.55) 62%,rgba(7,11,20,0) 85%)' });
-    S.el(root, { x: 0, y: 0, w: 1920, h: 1080, css: 'background:linear-gradient(rgba(7,11,20,0) 55%,rgba(7,11,20,0.85) 100%)' });
-    S.poster(root, { x: 96, y: 64, w: 240, h: 80, uri: 'images/elvanoq-wordmark-white.png', mode: 'fit' }).style.backgroundPosition = 'left center';
-    this.clockTime = S.label(root, { x: 1460, y: 60, w: 364, h: 48, size: 40, weight: 600, align: 'right' });
-    this.clockDate = S.label(root, { x: 1460, y: 110, w: 364, h: 30, size: 20, align: 'right', color: '0x8894A8FF' });
-    S.label(root, { x: 96, y: 236, w: 900, h: 28, text: 'ACESSO SEGURO', size: 20, weight: 700, color: '0x00D7FFFF', css: 'letter-spacing:0.14em' });
-    this.headline = S.label(root, { x: 96, y: 268, w: 1000, h: 84, text: 'Ative sua TV', size: 64, weight: 700, css: 'letter-spacing:-0.025em' });
-    this.description = S.label(root, { x: 96, y: 356, w: 960, h: 34, size: 24, color: '0xB8C4D6FF', text: 'Vincule este aparelho ao Portal ELVANOQ Play em três passos.' });
-    var steps = ['Acesse elvanoqplay.app ou aponte a câmera para o QR code', 'Informe o código e a chave desta TV', 'A TV ativa sozinha em alguns segundos'];
+    S.el(root, { x: 0, y: 0, w: 1920, h: 1080, css: 'background:linear-gradient(90deg,rgba(7,11,20,0.96) 0%,rgba(7,11,20,0.88) 38%,rgba(7,11,20,0.35) 70%,rgba(7,11,20,0) 100%)' });
+    S.poster(root, { x: 112, y: 72, w: 400, h: 97, uri: 'images/elvanoq-logo-tagline.png', mode: 'fit' }).style.backgroundPosition = 'left center';
+    this.clockTime = S.label(root, { x: 1444, y: 72, w: 364, h: 54, size: 46, weight: 600, align: 'right' });
+    this.clockDate = S.label(root, { x: 1444, y: 128, w: 364, h: 30, size: 22, align: 'right', color: '0x8894A8FF' });
+    S.label(root, { x: 112, y: 240, w: 900, h: 26, text: 'ACESSO SEGURO', size: 19, weight: 700, color: '0x00D7FFFF', css: 'letter-spacing:0.17em' });
+    this.headline = S.label(root, { x: 112, y: 270, w: 1000, h: 80, text: 'Ative sua TV', size: 66, weight: 700, css: 'letter-spacing:-0.026em' });
+    this.description = S.label(root, { x: 112, y: 350, w: 1000, h: 38, size: 27, color: '0xB8C4D6FF', text: 'Vincule esta TV ao Portal ELVANOQ Play em três passos.' });
+    var steps = ['Acesse elvanoqplay.app ou aponte a câmera para o QR code', 'Informe o código desta TV', 'A TV ativa sozinha em alguns segundos'];
     for (var i = 0; i < 3; i++) {
-      S.el(root, { x: 96, y: 418 + i * 58, w: 40, h: 40, text: String(i + 1), css: 'border-radius:20px;background:#147dff;color:#fff;font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center' });
-      S.label(root, { x: 156, y: 418 + i * 58, w: 900, h: 40, text: steps[i], size: 24, weight: 500, valign: 'center' });
+      S.el(root, { x: 112, y: 408 + i * 58, w: 45, h: 45, text: String(i + 1), css: 'border-radius:23px;background:#147dff;color:#fff;font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center' });
+      S.label(root, { x: 175, y: 408 + i * 58, w: 900, h: 45, text: steps[i], size: 25, valign: 'center', color: '0xE4EAF4FF' });
     }
-    S.label(root, { x: 96, y: 612, w: 700, h: 26, text: 'CÓDIGO DESTE APARELHO', size: 18, weight: 700, color: '0x8894A8FF', css: 'letter-spacing:0.12em' });
-    S.el(root, { x: 96, y: 646, w: 720, h: 116, css: 'box-sizing:border-box;border:3px solid #00d7ff;border-radius:16px;background:#0d1422' });
-    this.deviceCode = S.label(root, { x: 99, y: 656, w: 714, h: 58, size: 44, weight: 700, align: 'center', css: 'letter-spacing:0.04em' });
-    this.deviceKey = S.label(root, { x: 99, y: 716, w: 714, h: 30, size: 22, align: 'center', color: '0xB8C4D6FF' });
+    S.label(root, { x: 112, y: 592, w: 700, h: 26, text: 'CÓDIGO DESTA TV', size: 19, weight: 700, color: '0x8E9AAEFF', css: 'letter-spacing:0.14em' });
+    S.el(root, { x: 112, y: 630, w: 930, h: 130, className: 'act-code' });
+    S.label(root, { x: 151, y: 656, w: 400, h: 24, text: 'CÓDIGO', size: 18, weight: 700, color: '0x8E9AAEFF', css: 'letter-spacing:0.1em' });
+    this.deviceCode = S.label(root, { x: 151, y: 682, w: 860, h: 54, size: 42, weight: 700, css: 'letter-spacing:0.05em' });
     this.qrGroup = S.group(root, { className: 'layer', visible: false });
-    S.el(this.qrGroup, { x: 860, y: 596, w: 234, h: 234, css: 'background:#fff;border-radius:12px' });
-    this.qrHolder = S.el(this.qrGroup, { x: 878, y: 614, w: 198, h: 198 });
-    S.label(this.qrGroup, { x: 860, y: 842, w: 234, h: 28, text: 'Aponte a câmera do celular', size: 18, align: 'center', color: '0xB8C4D6FF' });
-    S.label(this.qrGroup, { x: 860, y: 870, w: 234, h: 30, text: 'elvanoqplay.app', size: 22, weight: 600, align: 'center', color: '0x00D7FFFF' });
-    this.button = S.el(root, { x: 96, y: 790, w: 720, h: 72, className: 'outline-action' });
-    this.buttonText = this.button;
-    this.button.addEventListener('click', function () { self.handleKey('OK'); });
-    this.statusDot = S.el(root, { x: 96, y: 912, w: 18, h: 18, className: 'status-dot pulse' });
-    this.status = S.label(root, { x: 130, y: 900, w: 1000, h: 42, text: 'Preparando ativação…', size: 22, weight: 500, valign: 'center' });
-    S.label(root, { x: 1460, y: 1010, w: 364, h: 30, text: 'v' + EP.VERSION, size: 16, align: 'right', color: '0x8894A899' });
+    S.el(this.qrGroup, { x: 1122, y: 574, w: 294, h: 294, css: 'background:#fff;border-radius:24px' });
+    this.qrHolder = S.el(this.qrGroup, { x: 1137, y: 589, w: 264, h: 264 });
+    S.label(this.qrGroup, { x: 1072, y: 884, w: 394, h: 30, text: 'Aponte a câmera do celular', size: 21, weight: 600, align: 'center', color: '0xB8C4D6FF' });
+    S.label(this.qrGroup, { x: 1072, y: 920, w: 394, h: 34, text: 'elvanoqplay.app', size: 26, weight: 700, align: 'center', color: '0x00D7FFFF' });
+    // Ações: botão principal e dois atalhos (foco por ↑/↓/←/→).
+    this.button = S.el(root, { x: 112, y: 780, w: 930, h: 93, className: 'act-primary' });
+    this.shortcuts = [
+      S.el(root, { x: 112, y: 885, w: 459, h: 81, className: 'act-short' }),
+      S.el(root, { x: 583, y: 885, w: 459, h: 81, className: 'act-short' })
+    ];
+    S.setButton(this.shortcuts[0], 'refresh', 'Verificar ativação');
+    S.setButton(this.shortcuts[1], 'info', 'Como ativar');
+    this.actions = [this.button, this.shortcuts[0], this.shortcuts[1]];
+    this.actionIndex = 0;
+    for (var k = 0; k < this.actions.length; k++) {
+      (function (index) { self.actions[index].addEventListener('click', function () { self.actionIndex = index; self.updateActionFocus(); self.runAction(); }); }(k));
+    }
+    this.statusDot = S.el(root, { x: 112, y: 1007, w: 14, h: 14, className: 'status-dot pulse' });
+    this.status = S.label(root, { x: 140, y: 994, w: 1000, h: 40, text: 'Preparando ativação…', size: 22, valign: 'center', color: '0xB8C4D6FF' });
+    S.label(root, { x: 1208, y: 996, w: 600, h: 36, text: 'ELVANOQ · LG webOS · Versão ' + EP.VERSION, size: 19, align: 'right', valign: 'center', color: '0x8E9AAEFF' });
+    this.updateActionFocus();
     // Aviso de teste encerrado (Roku 1.0.1): sem pagamento nem link externo.
     var ov = this.expiredOverlay = S.group(root, { className: 'layer', visible: false });
     S.rect(ov, { x: 0, y: 0, w: 1920, h: 1080, color: '0x02070DEB' });
@@ -88,20 +99,64 @@
   };
 
   MainScene.prototype.updateIdentity = function () {
-    if (!Portal.identity) {
-      this.deviceCode.textContent = 'Código ainda não gerado';
+    var ready = !!Portal.identity;
+    if (!ready) {
+      this.deviceCode.textContent = 'Pressione OK para gerar o código';
       this.deviceCode.style.fontSize = '32px';
-      this.deviceKey.textContent = 'Pressione OK para gerar a identificação protegida';
-      this.button.textContent = 'OK   •   Continuar e gerar identificação';
+      S.setButton(this.button, 'key', 'Continuar e gerar identificação');
       S.show(this.qrGroup, false);
-      return;
+    } else {
+      this.description.textContent = 'Vincule esta TV ao Portal ELVANOQ Play em três passos.';
+      this.deviceCode.textContent = Portal.deviceCode();
+      this.deviceCode.style.fontSize = '42px';
+      S.setButton(this.button, 'key', 'Entrar com código do servidor');
+      this.renderQr();
     }
-    this.description.textContent = 'Vincule este aparelho ao Portal ELVANOQ Play em três passos.';
-    this.deviceCode.textContent = Portal.deviceCode();
-    this.deviceCode.style.fontSize = '44px';
-    this.deviceKey.textContent = 'Chave do dispositivo: ' + Portal.identity.key;
-    this.button.textContent = 'OK   •   Entrar com código do servidor';
-    this.renderQr();
+    // Sem identificação ainda, "Verificar ativação" não faz sentido.
+    S.show(this.shortcuts[0], ready);
+    S.move(this.shortcuts[1], ready ? 583 : 112, 885, ready ? 459 : 930);
+    if (!ready && this.actionIndex === 1) this.actionIndex = 0;
+    this.updateActionFocus();
+  };
+
+  MainScene.prototype.updateActionFocus = function () {
+    for (var i = 0; i < this.actions.length; i++) S.toggle(this.actions[i], 'focused', i === this.actionIndex);
+  };
+
+  MainScene.prototype.moveAction = function (key) {
+    var ready = !!Portal.identity, i = this.actionIndex;
+    if (key === 'down' && i === 0) i = ready ? 1 : 2;
+    else if (key === 'up' && i > 0) i = 0;
+    else if (key === 'left' && i === 2 && ready) i = 1;
+    else if (key === 'right' && i === 1) i = 2;
+    this.actionIndex = i;
+    this.updateActionFocus();
+  };
+
+  MainScene.prototype.runAction = function () {
+    if (this.actionIndex === 0) {
+      if (!Portal.identity) this.giveConsent(); else this.openServerCodeKeyboard();
+    } else if (this.actionIndex === 1) {
+      if (!Portal.identity) return;
+      this.status.textContent = 'Verificando a ativação…';
+      this.setTone('connecting');
+      this.checkLicense();
+    } else this.openHelp();
+  };
+
+  MainScene.prototype.openHelp = function () {
+    var self = this, code = Portal.identity ? Portal.deviceCode() : '';
+    this.openList({
+      title: 'Como ativar esta TV', subtitle: code ? 'Código desta TV: ' + code : 'Primeiro gere o código desta TV',
+      items: [
+        { label: '1. No celular ou computador, abra elvanoqplay.app' },
+        { label: '2. Ou aponte a câmera do celular para o QR code da tela' },
+        { label: '3. Informe o código desta TV e cadastre a sua lista' },
+        { label: '4. A TV ativa sozinha em alguns segundos' },
+        { label: 'Tem o código do seu servidor? Use "Entrar com código do servidor"' }
+      ],
+      onSelect: function () { self.dialog.close(); }
+    });
   };
 
   /* QR com o código desta TV (mesma URL do Roku). Sem matriz, some o QR. */
@@ -239,10 +294,8 @@
       if (key === 'OK') { this.expiredInfo.textContent = 'Verificando a ativação…'; this.checkLicense(); }
       return true;
     }
-    if (key === 'OK') {
-      if (!Portal.identity) this.giveConsent(); else this.openServerCodeKeyboard();
-      return true;
-    }
+    if (key === 'OK') { this.runAction(); return true; }
+    if (key === 'up' || key === 'down' || key === 'left' || key === 'right') { this.moveAction(key); return true; }
     return key !== 'back';
   };
 

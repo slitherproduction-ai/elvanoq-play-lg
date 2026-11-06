@@ -51,7 +51,7 @@ for (const script of scripts) {
 }
 
 // Imagens usadas pelo layout Roku
-for (const asset of ['images/elvanoq-wordmark-white.png', 'images/elvanoq-login-tv-backdrop.jpg', 'images/splash.jpg', 'fonts/Inter-Regular.woff', 'fonts/Inter-Medium.woff', 'fonts/Inter-SemiBold.woff', 'fonts/Inter-Bold.woff']) requireFile(asset);
+for (const asset of ['images/elvanoq-wordmark-white.png', 'images/elvanoq-login-tv-backdrop.jpg', 'images/elvanoq-logo-tagline.png', 'images/splash.jpg', 'fonts/Inter-Regular.woff', 'fonts/Inter-Medium.woff', 'fonts/Inter-SemiBold.woff', 'fonts/Inter-Bold.woff']) requireFile(asset);
 
 // Testes de regras
 for (const test of ['tests/playlist-sync.test.cjs', 'tests/epg-and-stream.test.cjs', 'tests/v110-features.test.cjs']) {

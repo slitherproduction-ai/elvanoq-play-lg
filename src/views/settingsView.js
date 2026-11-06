@@ -86,7 +86,7 @@
   };
   SettingsView.prototype.setInfo = function (info) {
     this.info = info || {};
-    this.deviceInfo.textContent = info && info.code ? 'TV ' + info.code + '   •   Chave ' + info.key + '   •   Licença ' + EP.lower(info.licenseLabel) : '';
+    this.deviceInfo.textContent = info && info.code ? 'TV ' + info.code + '   •   Licença ' + EP.lower(info.licenseLabel) : '';
     this.parental.setInfo(info);
     this.render();
   };
