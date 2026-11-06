@@ -39,7 +39,8 @@
     this.deviceCode = S.label(root, { x: 151, y: 682, w: 860, h: 54, size: 42, weight: 700, css: 'letter-spacing:0.05em' });
     this.qrGroup = S.group(root, { className: 'layer', visible: false });
     S.el(this.qrGroup, { x: 1122, y: 574, w: 294, h: 294, css: 'background:#fff;border-radius:24px' });
-    this.qrHolder = S.el(this.qrGroup, { x: 1137, y: 589, w: 264, h: 264 });
+    // 33 módulos x 8 px = 264 px, centrado no cartão branco de 294 px.
+    this.qrHolder = S.el(this.qrGroup, { x: 1137, y: 589, w: 264, h: 264, css: 'display:flex;align-items:center;justify-content:center' });
     S.label(this.qrGroup, { x: 1072, y: 884, w: 394, h: 30, text: 'Aponte a câmera do celular', size: 21, weight: 600, align: 'center', color: '0xB8C4D6FF' });
     S.label(this.qrGroup, { x: 1072, y: 920, w: 394, h: 34, text: 'elvanoqplay.app', size: 26, weight: 700, align: 'center', color: '0x00D7FFFF' });
     // Ações: botão principal e dois atalhos (foco por ↑/↓/←/→).
@@ -161,7 +162,7 @@
 
   /* QR com o código desta TV (mesma URL do Roku). Sem matriz, some o QR. */
   MainScene.prototype.renderQr = function () {
-    var svg = EP.QrCode.qrSvg('https://elvanoqplay.app/adicionar-lista/?codigo=' + Portal.deviceCode(), 6, '#070b14');
+    var svg = EP.QrCode.qrSvg('https://elvanoqplay.app/adicionar-lista/?codigo=' + Portal.deviceCode(), 8, '#070b14');
     this.qrHolder.innerHTML = svg;
     S.show(this.qrGroup, !!svg);
   };
