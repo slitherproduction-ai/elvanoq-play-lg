@@ -54,7 +54,8 @@
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden) return;
       try { scene.shell.views[1].stopPreview(); } catch (_) {}
-      try { if (scene.shell.playerView.isVisible()) scene.shell.playerView.video.pause(); } catch (_) {}
+      // Pausa do sistema conta como pausa do usuário: a vigilância não reconecta na volta.
+      try { var pv = scene.shell.playerView; if (pv.isVisible()) { pv.userPaused = true; pv.video.pause(); } } catch (_) {}
       try { scene.shell.releaseMemory(); } catch (_) {}
     });
 

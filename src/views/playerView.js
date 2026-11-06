@@ -10,7 +10,7 @@
 (function (EP) {
   'use strict';
   var S = EP.Stage, LS = EP.LocalState, P = EP.Parental, F = EP.StreamFormat, G = EP.EpgRules, LF = EP.LiveFormat;
-  var WATCH_MS = 4000, STALL_LIVE_MS = 12000, STALL_VOD_MS = 20000, STALL_RETRIES = 3;
+  var WATCH_MS = 4000, STALL_LIVE_MS = 20000, STALL_VOD_MS = 30000, STALL_RETRIES = 3; // 1.1.2: limites do Android 2.17.25
   var STALL_TEXT = 'O sinal parou de chegar. Reconectando…';
 
   function PlayerView(parent) {
@@ -232,6 +232,7 @@
     this.stallRetries = 0;
     this.lastTime = -1;
     this.lastProgressAt = Date.now();
+    this.watchArmed = false; // só vigia depois que o vídeo começou a andar
     this.watchdog = setInterval(function () { self.watchTick(); }, WATCH_MS);
   };
 
@@ -245,6 +246,14 @@
     if (!this.content || this.failed || this.awaitingNextEpisode) { this.lastProgressAt = now; return; }
     var hidden = typeof document.visibilityState === 'string' && document.visibilityState !== 'visible';
     if (this.userPaused || v.ended || hidden) { this.lastProgressAt = now; this.lastTime = v.currentTime; return; }
+    // Servidor lento na abertura não conta como travamento (Android 2.17.25):
+    // a vigilância só arma quando o tempo do vídeo avança pela primeira vez.
+    if (!this.watchArmed) {
+      if (this.lastTime >= 0 && v.currentTime > this.lastTime + 0.25) this.watchArmed = true;
+      this.lastTime = v.currentTime;
+      this.lastProgressAt = now;
+      return;
+    }
     if (v.currentTime > this.lastTime + 0.25) {
       if (this.stallRetries && this.hint.textContent === STALL_TEXT) this.hint.textContent = this.defaultHint();
       this.lastTime = v.currentTime;
@@ -262,6 +271,8 @@
     this.osdTimer.stop();
     this.pendingSeek = this.isLive() ? 0 : Math.max(this.lastGoodPosition || 0, this.lastTime || 0);
     this.load(this.currentUrl);
+    this.watchArmed = false; // a nova fonte também tem a abertura liberada
+    this.lastTime = -1;
   };
 
   PlayerView.prototype.onRetryTimer = function () {
@@ -291,7 +302,9 @@
   };
 
   PlayerView.prototype.onPositionChanged = function () {
-    this.updateTimeline();
+    // Com a OSD oculta, nada de tocar no DOM a cada timeupdate (~4x/s):
+    // a linha do tempo é atualizada ao abrir a OSD (Android 2.17.25).
+    if (S.isVisible(this.osd)) this.updateTimeline();
     this.updateSkipIntroHint();
     var pos = this.video.currentTime;
     if (pos - this.lastPersistedSecond >= 30) this.persistProgress(false);
@@ -372,6 +385,7 @@
 
   PlayerView.prototype.showOsd = function () {
     S.show(this.osd, true);
+    if (this.content) this.updateTimeline();
     if (this.isLive()) this.renderLiveGuide();
     if (this.awaitingNextEpisode) S.show(this.nextPanel, true);
     if (this.isPlaying()) this.osdTimer.start(); else this.osdTimer.stop();

@@ -1,5 +1,12 @@
 # Changelog — ELVANOQ Play LG webOS
 
+## 1.1.2 — 06/11/2026 (desempenho, do Android 2.17.25)
+
+- Retomada automática só é armada depois que o vídeo começa a andar, com limites maiores: 20 s no ao vivo e 30 s em filmes/séries (antes 12 s e 20 s). Um servidor lento na abertura não é mais reiniciado em ciclo; depois de cada reconexão a nova fonte também tem a abertura liberada.
+- Menos trabalho no player: com os controles ocultos, a linha do tempo não é redesenhada a cada `timeupdate` (~4 vezes por segundo); ela é atualizada ao abrir os controles. O progresso continua salvo a cada 30 s.
+- App em segundo plano: a pausa feita pelo sistema conta como pausa do usuário, para a vigilância não reconectar sozinha na volta.
+- Não se aplica à LG: o limite de buffer do ExoPlayer (o `<video>` do webOS não expõe esse controle) e a liberação da prévia, que a LG já fazia (remove o `src` e chama `load()` ao abrir o player, ao sair da TV ao Vivo e ao ir para segundo plano).
+
 ## 1.1.1 — 06/11/2026
 
 - Tela de ativação no padrão da nova tela de login do Android 2.17.23: logo com slogan ("Sua mídia. Sua experiência."), fundo novo, relógio, "Ative sua TV" com três passos, código da TV em destaque, botão branco "Entrar com código do servidor", atalhos "Verificar ativação" (consulta a licença na hora) e "Como ativar", QR code do Portal e rodapé com status e versão. Navegação por ↑/↓/←/→ e OK.
