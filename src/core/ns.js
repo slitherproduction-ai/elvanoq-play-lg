@@ -6,7 +6,14 @@
 (function (root) {
   'use strict';
   var EP = root.EP = root.EP || {};
-  EP.VERSION = '1.1.2';
+  EP.VERSION = '1.1.3';
+
+  /* Capas do TMDB no tamanho em que aparecem (Roku 1.1.1): menos download,
+   * menos decodificação e menos memória. Outras URLs passam sem mudança. */
+  EP.sizedImage = function (url, size) {
+    url = url ? String(url) : '';
+    return size ? url.replace(/(image\.tmdb\.org\/t\/p\/)[^\/]+\//, '$1' + size + '/') : url;
+  };
 
   EP.text = function (value) {
     if (typeof value === 'number' && isFinite(value)) return String(value);

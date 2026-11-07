@@ -212,12 +212,12 @@
 
   /* ---------- Sobre ---------- */
   var NEWS = [
+    'Voltar no player fecha os controles primeiro; com a tela limpa, sai do vídeo.',
+    'Ao sair do ao vivo, a lista volta no canal que estava tocando.',
+    'Pesquise categorias e canais na TV ao Vivo: suba até o campo no topo de cada coluna.',
     'O vídeo volta sozinho quando o sinal trava; filmes retomam do mesmo ponto.',
-    'A TV lembra o formato do ao vivo (HLS ou TS) que funcionou em cada lista.',
     'Rever programas nos canais com arquivo, com três formatos de catch-up.',
-    'Categorias adultas protegidas pelo PIN automaticamente.',
-    'Categorias visíveis: oculte as que você não usa.',
-    'Ajustes, Controle parental, Diagnóstico e Sobre com visual novo.'
+    'Categorias adultas protegidas pelo PIN automaticamente.'
   ];
   function AboutPage(parent) {
     var page = premiumPage(parent, 'Sobre', 'ELVANOQ Play para LG webOS');

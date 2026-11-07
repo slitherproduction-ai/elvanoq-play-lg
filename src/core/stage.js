@@ -128,7 +128,9 @@
     return node;
   };
 
-  Stage.setPoster = function (node, uri) {
+  /* size: tamanho TMDB pedido (padrão w342, o das grades). */
+  Stage.setPoster = function (node, uri, size) {
+    if (uri) uri = EP.sizedImage(uri, size || 'w342');
     node.style.backgroundImage = uri ? 'url("' + String(uri).replace(/"/g, '%22') + '")' : 'none';
   };
 
