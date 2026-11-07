@@ -1,5 +1,12 @@
 # Changelog — ELVANOQ Play LG webOS
 
+## 1.1.3 — 07/11/2026
+
+- TV ao Vivo: campos "Pesquisar categoria" e "Pesquisar canais" no topo de cada coluna (paridade com o Android e o Roku 1.1.1). ▲ na primeira linha leva ao campo; ▼ volta para a lista; ◀/▶ trocam de campo; OK abre o teclado com "Pesquisar", "Limpar" e "Cancelar"; clique do Magic Remote também abre.
+- Categorias: "contém", sem diferenciar maiúsculas; "Todas"/"Favoritos" sempre no topo; "Nenhuma categoria encontrada" quando nada combina; a categoria aberta fica aberta se continuar na lista, senão abre a primeira encontrada. Só as categorias visíveis entram na busca.
+- Canais: pelo nome ou pelo programa atual do guia (se já carregado); o filtro continua ao trocar de categoria e vale para os canais que chegam da lista sob demanda; contagem "N de M"; o canal anterior/próximo do player segue a lista filtrada; a prévia não para ao filtrar.
+- Cada coluna mostra 13 linhas (antes 14) para caber o campo.
+
 ## 1.1.2 — 06/11/2026 (desempenho, do Android 2.17.25)
 
 - Retomada automática só é armada depois que o vídeo começa a andar, com limites maiores: 20 s no ao vivo e 30 s em filmes/séries (antes 12 s e 20 s). Um servidor lento na abertura não é mais reiniciado em ciclo; depois de cada reconexão a nova fonte também tem a abertura liberada.
