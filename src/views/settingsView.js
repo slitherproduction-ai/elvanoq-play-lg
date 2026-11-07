@@ -212,13 +212,14 @@
 
   /* ---------- Sobre ---------- */
   var NEWS = [
+    'TV ao Vivo: pesquise categorias e canais (pelo nome ou pelo programa atual).',
     'O vídeo volta sozinho quando o sinal trava; filmes retomam do mesmo ponto.',
     'A TV lembra o formato do ao vivo (HLS ou TS) que funcionou em cada lista.',
     'Rever programas nos canais com arquivo, com três formatos de catch-up.',
     'Categorias adultas protegidas pelo PIN automaticamente.',
     'Categorias visíveis: oculte as que você não usa.',
     'Ajustes, Controle parental, Diagnóstico e Sobre com visual novo.'
-  ];
+  ].slice(0, 6);
   function AboutPage(parent) {
     var page = premiumPage(parent, 'Sobre', 'ELVANOQ Play para LG webOS');
     this.root = page.root;
@@ -227,7 +228,7 @@
     this.version = S.label(this.root, { x: 112, y: 370, w: 776, h: 40, size: 30, weight: 700 });
     S.label(this.root, { x: 112, y: 420, w: 776, h: 200, size: 22, lineHeight: 34, lines: 6, color: '0xB8C4D6FF', text: 'Player de vídeo para listas autorizadas pelo usuário. O ELVANOQ Play não vende nem fornece canais, filmes ou séries: o conteúdo vem da lista que você conecta pelo Portal ou pelo código do servidor.' });
     S.label(this.root, { x: 112, y: 632, w: 776, h: 30, size: 20, color: '0x00D7FFFF', text: 'elvanoqplay.app' });
-    groupLabel(this.root, 992, 176, 'Novidades da ' + EP.VERSION);
+    groupLabel(this.root, 992, 176, 'Novidades recentes');
     S.el(this.root, { x: 984, y: 210, w: 872, h: 486, className: 'premium-card' });
     for (var i = 0; i < NEWS.length; i++) {
       S.el(this.root, { x: 1024, y: 252 + i * 72, w: 10, h: 10, css: 'border-radius:5px;background:#00d7ff' });
