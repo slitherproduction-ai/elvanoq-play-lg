@@ -93,7 +93,11 @@
       return EP.Http.get(apiUrl(xt, ACTIONS[kind], { category_id: category.id }), 45000).then(function (response) {
         var body = EP.Http.json(response);
         if (response.status < 200 || response.status >= 300 || !body || body.length === undefined) return { ok: false, items: [], error: 'Não foi possível carregar esta categoria. Tente novamente.' };
-        return { ok: true, items: R().xtreamCategoryItems(kind, xt.host, xt.username, xt.password, body, category.name, xt.liveExtension, limit || CATEGORY_LIMIT) };
+        var items = R().xtreamCategoryItems(kind, xt.host, xt.username, xt.password, body, category.name, xt.liveExtension, limit || CATEGORY_LIMIT);
+        // Total do servidor (vai junto com a lista, inclusive no cache): a grade
+        // avisa quando a categoria passa do limite carregado.
+        items.serverTotal = body.length;
+        return { ok: true, items: items };
       }, function () { return { ok: false, items: [], error: 'Não foi possível carregar esta categoria. Tente novamente.' }; });
     },
 
@@ -118,6 +122,7 @@
     },
     rawList: function (xt, kind) {
       var key = xt.host + '|' + xt.username + '|' + kind;
+      scheduleRawCacheRelease();
       if (Catalog.rawCache[key]) return Catalog.rawCache[key];
       var promise = EP.Http.get(apiUrl(xt, ACTIONS[kind]), 120000).then(function (response) {
         if (response.status < 200 || response.status >= 300 || !response.text) { delete Catalog.rawCache[key]; return null; }
@@ -128,6 +133,15 @@
     },
     clearSearchCache: function () { Catalog.rawCache = {}; }
   };
+
+  /* O texto bruto da busca (filmes + séries + canais) pode passar de dezenas de
+   * MB: sai da memória depois de 5 min sem buscar e volta a ser baixado na
+   * próxima busca. */
+  var RAW_CACHE_IDLE_MS = 5 * 60 * 1000, rawCacheTimer = null;
+  function scheduleRawCacheRelease() {
+    if (rawCacheTimer) clearTimeout(rawCacheTimer);
+    rawCacheTimer = setTimeout(function () { rawCacheTimer = null; Catalog.clearSearchCache(); }, RAW_CACHE_IDLE_MS);
+  }
 
   function normalize(value) {
     var s = EP.lower(String(value || '')).replace(/^\s+|\s+$/g, '');

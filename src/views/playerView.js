@@ -3,14 +3,14 @@
  * 10s↷ / Áudio / Legendas, zapping ↑/↓ no ao vivo, guia now/next,
  * reconexão automática (3x), pular abertura, próximo episódio em 6s e
  * gravação de progresso a cada 30s.
- * 1.1.0 (Android 2.17.21): retomada automática quando o vídeo trava
+ * 1.1.0 (Android 2.17.21) e 1.1.1 (Android 2.17.25): retomada automática quando o vídeo trava
  * (12 s ao vivo / 20 s filme, até 3 tentativas), formato do ao vivo lembrado
  * por lista e rever programas com três formatos de catch-up.
  */
 (function (EP) {
   'use strict';
   var S = EP.Stage, LS = EP.LocalState, P = EP.Parental, F = EP.StreamFormat, G = EP.EpgRules, LF = EP.LiveFormat;
-  var WATCH_MS = 4000, STALL_LIVE_MS = 20000, STALL_VOD_MS = 30000, STALL_RETRIES = 3; // 1.1.2: limites do Android 2.17.25
+  var WATCH_MS = 4000, STALL_LIVE_MS = 20000, STALL_VOD_MS = 30000, STALL_RETRIES = 3;
   var STALL_TEXT = 'O sinal parou de chegar. Reconectando…';
 
   function PlayerView(parent) {
@@ -122,6 +122,7 @@
     this.lastPersistedSecond = -30;
     this.shouldRestorePosition = content.resumePosition > 0;
     this.liveRetries = 0;
+    this.rawCredentialTried = false;
     this.catchupIndex = 0;
     // Filme/episódio retomado começa direto no ponto salvo (antes de bufferizar
     // o início): o salto é feito no loadedmetadata, como o PlayStart do Roku.
@@ -210,6 +211,15 @@
       this.retryTimer.start();
       return;
     }
+    // Última tentativa: usuário e senha sem codificação na URL (painéis que não
+    // aceitam %40, %2B etc.). Só uma vez por conteúdo.
+    var raw = !this.rawCredentialTried && F.rawCredentialVariant(this.currentUrl);
+    if (raw) {
+      this.rawCredentialTried = true;
+      this.hint.textContent = 'Tentando outro endereço do servidor…';
+      this.load(raw);
+      return;
+    }
     this.showFatal('Não foi possível reproduzir este conteúdo. Tente novamente.');
   };
 
@@ -227,16 +237,18 @@
 
   /* ---------- retomada automática quando o vídeo trava ----------
    * Um único setInterval de 4 s enquanto o player está aberto. Conta como
-   * travado quando currentTime não avança por 12 s (ao vivo) ou 20 s (filme),
-   * sem pausa do usuário e com a tela visível. */
+   * travado quando currentTime não avança por 20 s (ao vivo) ou 30 s (filme),
+   * sem pausa do usuário e com a tela visível. Só é armado depois que o vídeo
+   * começou a avançar: servidor lento na abertura não é reiniciado em ciclo
+   * (a falha de abertura continua tratada pelos eventos de erro). */
   PlayerView.prototype.startWatchdog = function () {
     var self = this;
     this.stopWatchdog();
     this.failed = false;
     this.stallRetries = 0;
+    this.hasStarted = false;
     this.lastTime = -1;
     this.lastProgressAt = Date.now();
-    this.watchArmed = false; // só vigia depois que o vídeo começou a andar
     this.watchdog = setInterval(function () { self.watchTick(); }, WATCH_MS);
   };
 
@@ -250,22 +262,20 @@
     if (!this.content || this.failed || this.awaitingNextEpisode) { this.lastProgressAt = now; return; }
     var hidden = typeof document.visibilityState === 'string' && document.visibilityState !== 'visible';
     if (this.userPaused || v.ended || hidden) { this.lastProgressAt = now; this.lastTime = v.currentTime; return; }
-    // Servidor lento na abertura não conta como travamento (Android 2.17.25):
-    // a vigilância só arma quando o tempo do vídeo avança pela primeira vez.
-    if (!this.watchArmed) {
-      if (this.lastTime >= 0 && v.currentTime > this.lastTime + 0.25) this.watchArmed = true;
-      this.lastTime = v.currentTime;
-      this.lastProgressAt = now;
-      return;
-    }
+    // 1ª leitura depois de abrir/reconectar: só marca a posição. Após uma
+    // reconexão o ao vivo recomeça perto de 0, então não comparamos com a
+    // posição de antes (isso dava "O sinal não voltou" com o canal tocando).
+    if (this.lastTime < 0) { this.lastTime = v.currentTime; this.lastProgressAt = now; return; }
     if (v.currentTime > this.lastTime + 0.25) {
       if (this.stallRetries && this.hint.textContent === STALL_TEXT) this.hint.textContent = this.defaultHint();
+      this.hasStarted = true;
       this.lastTime = v.currentTime;
       this.lastProgressAt = now;
       this.stallRetries = 0; // voltou a avançar
       if (!this.isLive() && v.currentTime > 1) this.lastGoodPosition = v.currentTime;
       return;
     }
+    if (!this.hasStarted) { this.lastProgressAt = now; return; }
     if (now - this.lastProgressAt < (this.isLive() ? STALL_LIVE_MS : STALL_VOD_MS)) return;
     if (this.stallRetries >= STALL_RETRIES) { this.showFatal('O sinal não voltou. Confira a internet e tente de novo.'); return; }
     this.stallRetries++;
@@ -274,9 +284,8 @@
     this.showOsd();
     this.osdTimer.stop();
     this.pendingSeek = this.isLive() ? 0 : Math.max(this.lastGoodPosition || 0, this.lastTime || 0);
-    this.load(this.currentUrl);
-    this.watchArmed = false; // a nova fonte também tem a abertura liberada
     this.lastTime = -1;
+    this.load(this.currentUrl);
   };
 
   PlayerView.prototype.onRetryTimer = function () {
@@ -306,9 +315,9 @@
   };
 
   PlayerView.prototype.onPositionChanged = function () {
-    // Com a OSD oculta, nada de tocar no DOM a cada timeupdate (~4x/s):
-    // a linha do tempo é atualizada ao abrir a OSD (Android 2.17.25).
-    if (S.isVisible(this.osd)) this.updateTimeline();
+    // 'timeupdate' chega ~4x/s: com os controles ocultos não redesenha a barra
+    // (showOsd atualiza ao reaparecer).
+    if (this.osdVisible) this.updateTimeline();
     this.updateSkipIntroHint();
     var pos = this.video.currentTime;
     if (pos - this.lastPersistedSecond >= 30) this.persistProgress(false);
@@ -317,7 +326,8 @@
   PlayerView.prototype.updateSkipIntroHint = function () {
     if (!this.skipIntroAvailable || !this.content) return;
     if (this.video.currentTime >= this.content.skipIntroEnd) { this.skipIntroAvailable = false; return; }
-    this.hint.textContent = EP.OPTIONS_LABEL + ': pular abertura  •  OK: controles  •  Voltar: sair';
+    var text = EP.OPTIONS_LABEL + ': pular abertura  •  OK: controles  •  Voltar: sair';
+    if (this.hint.textContent !== text) this.hint.textContent = text;
   };
 
   PlayerView.prototype.handleKey = function (key) {
@@ -397,6 +407,7 @@
   };
 
   PlayerView.prototype.showOsd = function () {
+    this.osdVisible = true;
     S.show(this.osd, true);
     if (this.content) this.updateTimeline();
     if (this.isLive()) this.renderLiveGuide();
@@ -406,6 +417,7 @@
 
   PlayerView.prototype.hideOsd = function () {
     this.osdTimer.stop();
+    this.osdVisible = false;
     S.show(this.osd, false);
     S.show(this.nextPanel, false);
   };

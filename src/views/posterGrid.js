@@ -21,31 +21,45 @@
     this.entries = entries || [];
     this.index = Math.min(this.index, Math.max(0, this.entries.length - 1));
     this.rowOffset = Math.min(this.rowOffset, Math.max(0, Math.floor(this.index / this.opts.cols)));
+    this.renderedFor = null; // lista nova: recria todos os blocos
     this.render();
   };
 
+  /* Rolar uma linha não recria a grade: os blocos que continuam na janela são
+   * mantidos (sem decodificar a imagem de novo), só os que saem são removidos
+   * e só os que entram são criados. Em TVs de 2016–2019 isso tira o engasgo. */
   PosterWall.prototype.render = function () {
-    var self = this, o = this.opts;
-    this.node.innerHTML = '';
-    this.tiles = {};
-    var first = Math.max(0, this.rowOffset - 1) * o.cols, last = Math.min(this.entries.length, (this.rowOffset + o.rows + 1) * o.cols);
-    for (var i = first; i < last; i++) {
-      var entry = this.entries[i], item = entry.item;
-      var p = S.el(this.node, { x: (i % o.cols) * (this.posterW + o.gapX), y: Math.floor(i / o.cols) * this.stride, w: this.posterW, h: this.posterH, className: 'poster' + (item.logo ? ' has-art' : '') });
-      if (item.logo) { S.setPoster(p, item.logo); p.style.backgroundSize = item.type === 'live' ? 'contain' : 'cover'; }
-      var fb = document.createElement('div'); fb.className = 'tile-fallback'; fb.textContent = EP.displayTitle(item.title); p.appendChild(fb);
-      var tag = item.type === 'live' ? 'AO VIVO' : EP.qualityOf(item.title);
-      if (tag) { var b = document.createElement('div'); b.className = 'badge'; b.textContent = tag; p.appendChild(b); }
-      if (entry.progress > 0) {
-        var track = document.createElement('div'); track.className = 'progress-track';
-        var fill = document.createElement('div'); fill.className = 'progress-fill'; fill.style.width = Math.round(Math.min(1, entry.progress) * 100) + '%';
-        track.appendChild(fill); p.appendChild(track);
-      }
-      (function (index) { p.addEventListener('click', function () { self.index = index; self.updateFocus(); if (self.onSelect) self.onSelect(self.entries[index], index); }); }(i));
-      this.tiles[i] = p;
+    var o = this.opts;
+    if (this.renderedFor !== this.entries) {
+      this.node.innerHTML = '';
+      this.tiles = {};
+      this.renderedFor = this.entries;
     }
+    var first = Math.max(0, this.rowOffset - 1) * o.cols, last = Math.min(this.entries.length, (this.rowOffset + o.rows + 1) * o.cols);
+    for (var k in this.tiles) {
+      if (!Object.prototype.hasOwnProperty.call(this.tiles, k)) continue;
+      var n = Number(k);
+      if (n < first || n >= last) { this.node.removeChild(this.tiles[k]); delete this.tiles[k]; }
+    }
+    for (var i = first; i < last; i++) if (!this.tiles[i]) this.tiles[i] = this.createTile(i);
     this.node.style.transform = 'translateY(-' + (this.rowOffset * this.stride) + 'px)';
     this.updateFocus();
+  };
+
+  PosterWall.prototype.createTile = function (i) {
+    var self = this, o = this.opts, entry = this.entries[i], item = entry.item;
+    var p = S.el(this.node, { x: (i % o.cols) * (this.posterW + o.gapX), y: Math.floor(i / o.cols) * this.stride, w: this.posterW, h: this.posterH, className: 'poster' + (item.logo ? ' has-art' : '') });
+    if (item.logo) { S.setPoster(p, item.logo); p.style.backgroundSize = item.type === 'live' ? 'contain' : 'cover'; }
+    var fb = document.createElement('div'); fb.className = 'tile-fallback'; fb.textContent = EP.displayTitle(item.title); p.appendChild(fb);
+    var tag = item.type === 'live' ? 'AO VIVO' : EP.qualityOf(item.title);
+    if (tag) { var b = document.createElement('div'); b.className = 'badge'; b.textContent = tag; p.appendChild(b); }
+    if (entry.progress > 0) {
+      var track = document.createElement('div'); track.className = 'progress-track';
+      var fill = document.createElement('div'); fill.className = 'progress-fill'; fill.style.width = Math.round(Math.min(1, entry.progress) * 100) + '%';
+      track.appendChild(fill); p.appendChild(track);
+    }
+    p.addEventListener('click', function () { self.index = i; self.updateFocus(); if (self.onSelect) self.onSelect(self.entries[i], i); });
+    return p;
   };
 
   PosterWall.prototype.setFocus = function (focused) { this.focused = focused; this.updateFocus(); };
