@@ -50,6 +50,7 @@
     v[SERIES].events.on('selectedItem', openOrPlay);
     v[LIVE].events.on('categoryRequested', function (r) { self.requestCategory(LIVE, r); });
     v[LIVE].events.on('optionsRequested', function (r) { self.openChannelOptions(r.item); });
+    v[LIVE].events.on('searchRequested', function (r) { self.openLiveSearchKeyboard(r.column); });
     v[MOVIES].events.on('categoryRequested', function (r) { self.requestCategory(MOVIES, r); });
     v[SERIES].events.on('categoryRequested', function (r) { self.requestCategory(SERIES, r); });
     v[SEARCH].events.on('searchRequested', function (r) { self.runGlobalSearch(r.query); });
@@ -74,10 +75,13 @@
       self.playEpisode(ep);
     });
     p.events.on('closeRequested', function () {
+      var c = p.content, liveItem = c && c.liveQueue && c.liveQueue.length ? c.liveQueue[c.liveIndex] : null;
       self.clearEpisodeQueue();
       self.homeDirty = true; // Continuar assistindo mudou
       if (d.isVisible() && d.item) { d.updateCollectionButtons(); d.renderLower(); d.updateFocus(); }
       self.refreshCurrent(true);
+      // Ao vivo: a lista volta com o canal que estava tocando e a prévia nele.
+      if (liveItem && self.selectedIndex === LIVE && !d.isVisible()) self.views[LIVE].returnToChannel(liveItem.id);
     });
     p.events.on('channelRequested', function (r) { self.playLiveItem(r.item, p.content.liveQueue, r.index); });
     p.events.on('favoriteRequested', function (r) {
@@ -324,6 +328,20 @@
       title: 'Buscar no ELVANOQ Play', message: 'Filmes, séries e canais da sua lista', text: this.views[SEARCH].query,
       buttons: ['Buscar', 'Cancelar'],
       onButton: function (index, value) { if (index === 0) self.views[SEARCH].setQuery(value); }
+    });
+  };
+
+  /* TV ao Vivo: "Pesquisar categoria" / "Pesquisar canais". Limpar ou texto
+   * vazio removem o filtro; Cancelar e Voltar fecham sem mudar nada. */
+  AppShell.prototype.openLiveSearchKeyboard = function (column) {
+    var live = this.views[LIVE], state = live.searchState(column);
+    this.app.openKeyboard({
+      title: state.title, message: state.message, text: state.text,
+      buttons: ['Pesquisar', 'Limpar', 'Cancelar'],
+      onButton: function (button, value) {
+        if (button === 0) live.setSearch(column, value);
+        else if (button === 1) live.setSearch(column, '');
+      }
     });
   };
 

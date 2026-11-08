@@ -1,5 +1,15 @@
 # Changelog — ELVANOQ Play LG webOS
 
+## 1.1.3 — 07/11/2026 (paridade com o Roku 1.1.1)
+
+- **Busca na TV ao Vivo** (igual ao Android e ao Roku): campos "Pesquisar categoria" e "Pesquisar canais" no topo de cada coluna. ▲ na primeira linha chega ao campo, ▼ volta, ◀/▶ trocam de campo e OK abre o teclado (Pesquisar, Limpar, Cancelar). Categorias filtradas pelo nome (Todas e Favoritos sempre no topo; ocultas continuam ocultas). Canais filtrados pelo nome ou pelo programa atual do guia, com contagem "N de M"; o filtro continua ao trocar de categoria e a fila do player (canal anterior/próximo) usa a lista filtrada. As colunas passam a ter 13 linhas.
+- **Voltar no player** (Android 2.17.29/2.17.30, Roku 1.1.1): com os controles na tela, Voltar primeiro fecha os controles; com a tela limpa, Voltar sai do player. Vale para ao vivo, filmes, séries e rever. Na tela de erro, ou quando o vídeo não chegou a carregar (conteúdo protegido, TV sem licença), Voltar sai direto.
+- **Volta do ao vivo no canal que tocava:** ao sair do player, a lista de canais volta com o canal que estava tocando selecionado (inclusive depois de canal anterior/próximo), rolada até ele, e a prévia continua nele.
+- **Retomada direto no ponto** (Roku 1.1.1, `PlayStart`): filme ou episódio retomado salta para o ponto salvo no `loadedmetadata`, antes de bufferizar o início (antes abria do começo e pulava no `playing`, bufferizando duas vezes). Se a TV ignorar o salto, ele é refeito no `playing`.
+- **Imagens no tamanho da tela** (Roku 1.1.1): capas do TMDB pedidas em `w342` nas grades e trilhos (antes podiam vir em `original`), `w500` no pôster dos detalhes, `w300` nos episódios e `w1280` no destaque do Início e no fundo dos detalhes. Menos download, menos decodificação e menos memória. URLs que não são do TMDB passam sem mudança (`EP.sizedImage`).
+- Não se aplicam à LG: a correção do ao vivo reabrindo sozinho do Roku (lá o `position` do Video só atualizava no `notificationInterval`; aqui o `currentTime` do `<video>` é contínuo) e a liberação das respostas grandes da API (o JavaScript já descarta a resposta bruta depois de montar os itens).
+- Novos testes `tests/live-search.test.cjs` e `tests/v113-features.test.cjs`.
+
 ## 1.1.2 — 06/11/2026 (desempenho, do Android 2.17.25)
 
 - Retomada automática só é armada depois que o vídeo começa a andar, com limites maiores: 20 s no ao vivo e 30 s em filmes/séries (antes 12 s e 20 s). Um servidor lento na abertura não é mais reiniciado em ciclo; depois de cada reconexão a nova fonte também tem a abertura liberada.

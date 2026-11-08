@@ -215,11 +215,11 @@
     var art = this.art;
     if (backdrop) {
       S.move(art, 0, 0, 1920);
-      art.style.backgroundImage = 'url("' + backdrop.replace(/"/g, '%22') + '")';
+      art.style.backgroundImage = 'url("' + EP.sizedImage(backdrop, 'w1280').replace(/"/g, '%22') + '")';
       art.style.opacity = '0.85';
     } else if (poster) {
       S.move(art, 1040, 0, 880);
-      art.style.backgroundImage = 'url("' + poster.replace(/"/g, '%22') + '")';
+      art.style.backgroundImage = 'url("' + EP.sizedImage(poster, 'w780').replace(/"/g, '%22') + '")';
       art.style.opacity = '0.55';
     } else art.style.opacity = '0';
   };

@@ -81,7 +81,9 @@
       if (self.hint.textContent === STALL_TEXT) self.hint.textContent = self.defaultHint();
       S.setButton(self.controlLabels[1], '', 'Pausar');
       if (self.shouldRestorePosition && self.content.resumePosition > 0) {
-        try { v.currentTime = self.content.resumePosition; } catch (_) {}
+        // O ponto salvo já foi aplicado no loadedmetadata (Roku 1.1.1: PlayStart).
+        // Só se a TV ignorou aquele salto é que ele é feito aqui.
+        if (v.currentTime < self.content.resumePosition - 5) { try { v.currentTime = self.content.resumePosition; } catch (_) {} }
         self.shouldRestorePosition = false;
         self.hint.textContent = 'Retomando de onde você parou.';
       } else if (/Carregando|Reconectando|Tentando/.test(self.hint.textContent)) self.hint.textContent = self.defaultHint();
@@ -121,7 +123,9 @@
     this.shouldRestorePosition = content.resumePosition > 0;
     this.liveRetries = 0;
     this.catchupIndex = 0;
-    this.pendingSeek = 0;
+    // Filme/episódio retomado começa direto no ponto salvo (antes de bufferizar
+    // o início): o salto é feito no loadedmetadata, como o PlayStart do Roku.
+    this.pendingSeek = !this.isLive() && content.resumePosition > 0 ? content.resumePosition : 0;
     this.userPaused = false;
     this.lastGoodPosition = content.resumePosition || 0;
     this.retryTimer.stop();
@@ -326,7 +330,14 @@
     if (key === 'stop') { this.close(); return true; }
     if (key === 'rev') { this.seekBy(-10); this.showOsd(); return true; }
     if (key === 'fwd') { this.seekBy(10); this.showOsd(); return true; }
-    if (key === 'back') { this.close(); return true; }
+    // Android 2.17.30 / Roku 1.1.1: com os controles na tela, Voltar primeiro
+    // fecha os controles; com a tela limpa, Voltar sai do player. Na tela de
+    // erro ou sem vídeo carregado, Voltar sai direto.
+    if (key === 'back') {
+      if (S.isVisible(this.osd) && !this.failed && this.hasSource()) { this.hideOsd(); return true; }
+      this.close();
+      return true;
+    }
     if (key === 'left') { if (this.selectedControl > 0) this.selectedControl--; this.updateControlFocus(); this.showOsd(); return true; }
     if (key === 'right') { if (this.selectedControl < 4) this.selectedControl++; this.updateControlFocus(); this.showOsd(); return true; }
     if ((key === 'up' || key === 'channelUp') && this.isLive()) { this.switchLiveChannel(-1); return true; }
@@ -349,6 +360,8 @@
     this.refreshTrackStatus();
     return true;
   };
+
+  PlayerView.prototype.hasSource = function () { return !!this.video.querySelector('source'); };
 
   PlayerView.prototype.close = function () {
     this.persistProgress(false);
