@@ -6,7 +6,7 @@
 (function (root) {
   'use strict';
   var EP = root.EP = root.EP || {};
-  EP.VERSION = '1.1.3';
+  EP.VERSION = '1.1.4';
 
   /* Capas do TMDB no tamanho em que aparecem (Roku 1.1.1): menos download,
    * menos decodificação e menos memória. Outras URLs passam sem mudança. */

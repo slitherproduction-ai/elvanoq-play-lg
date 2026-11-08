@@ -23,7 +23,20 @@
     return '';
   }
 
-  var api = { streamFormatForUrl: streamFormatForUrl, mimeForUrl: mimeForUrl, hlsAlternative: hlsAlternative };
+  /* Xtream: usuário e senha vão no caminho. A LG/MSX codifica (@ vira %40);
+   * alguns painéis só aceitam o texto puro (padrão do Android). Devolve a URL
+   * com as credenciais decodificadas, ou '' quando não há o que trocar. */
+  function rawCredentialVariant(streamUrl) {
+    var url = String(streamUrl || '');
+    var m = /^(.*\/(?:live|movie|series|timeshift)\/)([^\/?#]+)\/([^\/?#]+)(\/.*)$/i.exec(url);
+    if (!m || (m[2].indexOf('%') === -1 && m[3].indexOf('%') === -1)) return '';
+    try {
+      var raw = m[1] + decodeURIComponent(m[2]) + '/' + decodeURIComponent(m[3]) + m[4];
+      return raw !== url && !/[\/?#]/.test(decodeURIComponent(m[2]) + decodeURIComponent(m[3])) ? raw : '';
+    } catch (_) { return ''; }
+  }
+
+  var api = { streamFormatForUrl: streamFormatForUrl, mimeForUrl: mimeForUrl, hlsAlternative: hlsAlternative, rawCredentialVariant: rawCredentialVariant };
   root.EP = root.EP || {};
   root.EP.StreamFormat = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

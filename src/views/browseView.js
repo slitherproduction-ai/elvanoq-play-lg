@@ -114,6 +114,7 @@
     var category = this.categories[this.categoryIndex];
     if (!payload.error) category.total = payload.items.length;
     this.selectedItems = payload.items || [];
+    this.serverTotal = payload.items && payload.items.serverTotal > this.selectedItems.length ? payload.items.serverTotal : 0;
     this.page = 0; this.gridIndex = 0;
     this.renderCategories();
     if (!this.selectedItems.length) { this.renderGrid([]); this.showEmpty(payload.error || 'Nenhum título nesta categoria.'); this.filterLabel.textContent = ''; this.updateSelectedCopy(); return; }
@@ -242,7 +243,11 @@
     this.renderGrid(this.selectedItems.slice(this.page * PAGE, this.page * PAGE + PAGE));
     this.updateGridFocus();
     var total = Math.ceil(this.selectedItems.length / PAGE);
-    this.filterLabel.textContent = EP.formatNumber(this.selectedItems.length) + ' títulos   •   Página ' + (this.page + 1) + ' de ' + total;
+    // Categoria maior que o limite carregado: mostra quantos o servidor tem.
+    var count = this.serverTotal && this.selectedItems.serverTotal === this.serverTotal
+      ? EP.formatNumber(this.selectedItems.length) + ' de ' + EP.formatNumber(this.serverTotal) + ' títulos (use a busca para os demais)'
+      : EP.formatNumber(this.selectedItems.length) + ' títulos';
+    this.filterLabel.textContent = count + '   •   Página ' + (this.page + 1) + ' de ' + total;
   };
 
   BrowseView.prototype.updateGridFocus = function () {

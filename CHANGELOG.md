@@ -1,5 +1,13 @@
 # Changelog — ELVANOQ Play LG webOS
 
+## 1.1.4 — 08/11/2026 (auditoria técnica)
+
+- **Categoria acima do limite:** quando o servidor tem mais de 5.000 títulos numa categoria, a grade mostra "5.000 de N títulos (use a busca para os demais)" em vez de cortar sem aviso.
+- **Busca mais leve:** o texto bruto do catálogo usado na busca (filmes, séries e canais, dezenas de MB) sai da memória depois de 5 minutos sem buscar.
+- **Grade de pôsteres (Busca e Minha Lista):** rolar uma linha mantém os pôsteres que continuam na tela e só cria os novos, sem apagar e redesenhar a grade inteira; tira o engasgo em TVs de 2016–2019.
+- **Player:** se o vídeo não abrir depois das tentativas normais, tenta uma vez com usuário e senha sem codificação na URL (painéis que não aceitam `%40`, `%2B` etc., como o Android).
+- **Retomada automática igual à LG/MSX e ao Samsung:** a vigilância só arma depois que o vídeo começou a andar e, após reconectar, só marca a posição na primeira leitura (o ao vivo recomeça perto de 0 e dava "O sinal não voltou" com o canal tocando). Teste `player-watchdog` incluído.
+
 ## 1.1.3 — 07/11/2026 (paridade com o Roku 1.1.1)
 
 - **Busca na TV ao Vivo** (igual ao Android e ao Roku): campos "Pesquisar categoria" e "Pesquisar canais" no topo de cada coluna. ▲ na primeira linha chega ao campo, ▼ volta, ◀/▶ trocam de campo e OK abre o teclado (Pesquisar, Limpar, Cancelar). Categorias filtradas pelo nome (Todas e Favoritos sempre no topo; ocultas continuam ocultas). Canais filtrados pelo nome ou pelo programa atual do guia, com contagem "N de M"; o filtro continua ao trocar de categoria e a fila do player (canal anterior/próximo) usa a lista filtrada. As colunas passam a ter 13 linhas.
