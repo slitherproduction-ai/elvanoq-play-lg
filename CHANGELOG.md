@@ -1,3 +1,7 @@
+# 1.1.5 — 2026-11-09
+
+- Tela inicial com duas fileiras: Novidades para você e Continuar assistindo.
+
 # Changelog — ELVANOQ Play LG webOS
 
 ## 1.1.4 — 08/11/2026 (auditoria técnica)
@@ -59,3 +63,4 @@
 
 ## 1.0.1 — 01/11/2026
 - Alinhamento com o Roku 1.0.1: arte própria, aviso de teste encerrado, deep link e liberação de memória.
+

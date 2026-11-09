@@ -1,6 +1,6 @@
 {
   "id": "com.elvanoq.play",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "vendor": "ELVANOQ",
   "type": "web",
   "requiredACG": [
@@ -15,3 +15,4 @@
   "splashBackground": "splash.png",
   "disableBackHistoryAPI": true
 }
+

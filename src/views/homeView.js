@@ -2,8 +2,8 @@
  *   1. destaque largo (0–640) com rótulo, título, metadados, sinopse,
  *      "Assistir agora" / "Minha Lista" e paginação; relógio fixo no canto;
  *   2. blocos: TV ao Vivo, Filmes, Séries, Busca, Minha Lista, Ajustes;
- *   3. fileira: Continuar assistindo → Seus favoritos → Novidades para você.
- * Ao focar a fileira a página sobe 328 px, como no Roku. Acabamento do
+ *   3. duas fileiras: Novidades para você e Continuar assistindo (se houver).
+ * Ao focar as fileiras a página sobe 328 / 712 px, como no Roku. Acabamento do
  * Android: arte com sombras, luz ambiente, transição do destaque, pôsteres
  * arredondados com foco ciano e ampliação.
  */
@@ -16,7 +16,7 @@
   ];
   var TILE_X = 64, TILE_W = 280, TILE_GAP = 22, TILE_Y = 662, TILE_H = 150;
   var POSTER_W = 196, POSTER_H = 294, POSTER_GAP = 24, RAIL_Y = 892, RAIL_VISIBLE = 8, RAIL_LIMIT = 30;
-  var SCROLL = 270;
+  var SCROLL = 328;
   var GLOWS = ['rgba(126, 48, 205, 0.62)', 'rgba(20, 110, 255, 0.55)', 'rgba(0, 170, 200, 0.45)'];
 
   function HomeView(parent) {
@@ -59,11 +59,17 @@
       this.tiles.push(tile);
     }
 
-    // Fileira
-    this.railTitle = S.label(scroller, { x: 64, y: 842, w: 900, h: 40, text: 'Novidades para você', size: 26, weight: 600 });
-    this.railHint = S.label(scroller, { x: 1056, y: 846, w: 800, h: 32, text: 'Filmes e séries adicionados recentemente', size: 20, align: 'right', color: '0x8894A8FF' });
-    var viewport = S.el(scroller, { x: 44, y: RAIL_Y - 20, w: 1832, h: POSTER_H + 40, css: 'overflow:hidden' });
-    this.strip = S.el(viewport, { x: 20, y: 20, w: 8000, h: POSTER_H, className: 'scroller' });
+    // Fileiras com índices e deslocamentos independentes.
+    this.rails = [];
+    for (var row = 0; row < 2; row++) {
+      var group = S.group(scroller, { x: 0, y: row * 384 });
+      var title = S.label(group, { x: 64, y: 842, w: 900, h: 40, text: row ? 'Continuar assistindo' : 'Novidades para você', size: 26, weight: 600 });
+      var hint = S.label(group, { x: 1056, y: 846, w: 800, h: 32, text: row ? 'Retome de onde parou' : 'Filmes e séries adicionados recentemente', size: 20, align: 'right', color: '0x8894A8FF' });
+      var viewport = S.el(group, { x: 44, y: RAIL_Y - 20, w: 1832, h: POSTER_H + 40, css: 'overflow:hidden' });
+      var strip = S.el(viewport, { x: 20, y: 20, w: 8000, h: POSTER_H, className: 'scroller' });
+      this.rails.push({ group: group, title: title, hint: hint, strip: strip, items: [], posters: [], index: 0, offset: 0 });
+    }
+    this.railRow = 0;
     this.emptyState = S.label(scroller, { x: 64, y: 900, w: 1500, h: 52, size: 24, color: '0x8894A8FF', visible: false });
 
     // Relógio fixo (não rola com a página)
@@ -72,8 +78,8 @@
     this.updateClock();
     this.clockTimer = setInterval(function () { self.updateClock(); }, 15000);
 
-    this.area = 'tiles'; this.tileIndex = 0; this.heroAction = 0; this.railIndex = 0; this.railOffset = 0;
-    this.slides = []; this.slideIndex = 0; this.railItems = []; this.isActive = true; this.hasFocus = true;
+    this.area = 'tiles'; this.tileIndex = 0; this.heroAction = 0;
+    this.slides = []; this.slideIndex = 0; this.isActive = true; this.hasFocus = true;
     this.heroTimer = new EP.Timer(8, true, function () { self.nextSlide(1); });
     this.watchButton.addEventListener('click', function () { self.area = 'hero'; self.heroAction = 0; self.handleKey('OK'); });
     this.listButton.addEventListener('click', function () { self.area = 'hero'; self.heroAction = 1; self.handleKey('OK'); });
@@ -103,8 +109,9 @@
     if (!items.length) {
       this.heroTimer.stop();
       this.slides = [];
-      this.railItems = [];
-      this.renderRail();
+      this.railRow = 0;
+      this.rails[0].items = []; this.rails[1].items = [];
+      this.renderRail(0); this.renderRail(1);
       S.show(this.emptyState, true);
       this.emptyState.textContent = 'Sua lista será exibida aqui assim que a sincronização for concluída.';
       return;
@@ -232,43 +239,42 @@
   };
 
   HomeView.prototype.buildRail = function (vod, byId) {
-    var state = LS.load(), items = [], seen = {}, i, kind = 'recent';
-    function add(item, progress) { if (item && !seen[item.id] && items.length < RAIL_LIMIT) { seen[item.id] = true; items.push({ item: item, progress: progress || 0 }); } }
-    for (i = state.continue_watching.length - 1; i >= 0; i--) {
-      var saved = state.continue_watching[i];
+    var state = LS.load(), items = [], seen = {}, i;
+    function add(item, progress) { if (item && item.type !== 'live' && !seen[item.id] && items.length < RAIL_LIMIT) { seen[item.id] = true; items.push({ item: item, progress: progress || 0 }); } }
+    var savedItems = state.continue_watching.slice().sort(function (a, b) { return (a.updated_at || 0) > (b.updated_at || 0) ? 1 : (a.updated_at || 0) < (b.updated_at || 0) ? -1 : 0; });
+    for (i = savedItems.length - 1; i >= 0; i--) {
+      var saved = savedItems[i];
       var item = byId[saved.id] || byId[String(saved.id).split(':episode:')[0]];
-      if (item) add(item, saved.duration_seconds ? saved.progress_seconds / saved.duration_seconds : 0);
+      if (item) { add(item, saved.duration_seconds ? saved.progress_seconds / saved.duration_seconds : 0); if (items.length && items[items.length - 1].item === item && !items[items.length - 1].saved) items[items.length - 1].saved = saved; }
     }
-    if (items.length) kind = 'continue';
-    else {
-      for (i = state.favorites.length - 1; i >= 0; i--) { var fav = byId[state.favorites[i].id]; if (fav) add(fav); }
-      if (items.length) kind = 'favorites';
+    this.rails[1].items = items;
+    items = []; seen = {};
+    var sorted = vod.slice().sort(function (a, b) { return addedValue(b) > addedValue(a) ? 1 : addedValue(b) < addedValue(a) ? -1 : 0; });
+    var titles = {};
+    for (i = 0; i < sorted.length && items.length < RAIL_LIMIT; i++) {
+      var key = EP.lower(EP.displayTitle(sorted[i].title)) + '|' + (sorted[i].year || '');
+      if (titles[key]) continue;
+      titles[key] = true; add(sorted[i]);
     }
-    if (!items.length) {
-      var sorted = vod.slice().sort(function (a, b) { return addedValue(b) > addedValue(a) ? 1 : addedValue(b) < addedValue(a) ? -1 : 0; });
-      var titles = {};
-      for (i = 0; i < sorted.length && items.length < RAIL_LIMIT; i++) {
-        var key = EP.lower(EP.displayTitle(sorted[i].title)) + '|' + (sorted[i].year || '');
-        if (titles[key]) continue; // versões DUB/LEG agrupadas
-        titles[key] = true; add(sorted[i]);
-      }
+    this.rails[0].items = items;
+    for (i = 0; i < 2; i++) {
+      var rail = this.rails[i];
+      rail.index = Math.min(rail.index, Math.max(0, rail.items.length - 1));
+      rail.offset = Math.min(rail.offset, Math.max(0, rail.items.length - RAIL_VISIBLE));
+      this.renderRail(i);
     }
-    var copy = { continue: ['Continuar assistindo', 'Retome de onde parou'], favorites: ['Seus favoritos', 'Canais e títulos salvos nesta TV'], recent: ['Novidades para você', 'Filmes e séries adicionados recentemente'] }[kind];
-    this.railTitle.textContent = copy[0];
-    this.railHint.textContent = copy[1];
-    this.railItems = items;
-    this.railIndex = Math.min(this.railIndex, Math.max(0, items.length - 1));
-    this.railOffset = Math.min(this.railOffset, Math.max(0, items.length - RAIL_VISIBLE));
-    this.renderRail();
+    if (!this.rails[1].items.length && this.railRow === 1) this.railRow = 0;
+    this.updateFocus();
   };
 
-  HomeView.prototype.renderRail = function () {
-    var self = this;
-    this.strip.innerHTML = '';
-    this.posters = [];
-    for (var i = 0; i < this.railItems.length; i++) {
-      var entry = this.railItems[i], item = entry.item;
-      var p = S.el(this.strip, { x: i * (POSTER_W + POSTER_GAP), y: 0, w: POSTER_W, h: POSTER_H, className: 'poster' + (item.logo ? ' has-art' : '') });
+  HomeView.prototype.renderRail = function (row) {
+    var self = this, rail = this.rails[row];
+    S.show(rail.group, row === 0 || rail.items.length > 0);
+    rail.strip.innerHTML = '';
+    rail.posters = [];
+    for (var i = 0; i < rail.items.length; i++) {
+      var entry = rail.items[i], item = entry.item;
+      var p = S.el(rail.strip, { x: i * (POSTER_W + POSTER_GAP), y: 0, w: POSTER_W, h: POSTER_H, className: 'poster' + (item.logo ? ' has-art' : '') });
       if (item.logo) S.setPoster(p, item.logo);
       p.style.backgroundSize = 'cover';
       var fb = document.createElement('div'); fb.className = 'tile-fallback'; fb.textContent = EP.displayTitle(item.title); p.appendChild(fb);
@@ -279,14 +285,15 @@
         var fill = document.createElement('div'); fill.className = 'progress-fill'; fill.style.width = Math.round(Math.min(1, entry.progress) * 100) + '%';
         track.appendChild(fill); p.appendChild(track);
       }
-      (function (index) { p.addEventListener('click', function () { self.area = 'rail'; self.railIndex = index; self.updateFocus(); self.handleKey('OK'); }); }(i));
-      this.posters.push(p);
+      (function (index) { p.addEventListener('click', function () { self.area = 'rail'; self.railRow = row; rail.index = index; self.updateFocus(); self.handleKey('OK'); }); }(i));
+      rail.posters.push(p);
     }
     this.updateFocus();
   };
 
   HomeView.prototype.setActive = function (active) {
     this.isActive = active;
+    if (!active) this.resumeToken = null;
     if (active) { this.updateClock(); if (this.catalogItems) this.buildRail(this.vodOnly(), this.byId || {}); }
     if (active && this.slides.length > 1) this.heroTimer.start(); else this.heroTimer.stop();
   };
@@ -303,11 +310,21 @@
     S.focus(this.watchButton, f && this.area === 'hero' && this.heroAction === 0);
     S.focus(this.listButton, f && this.area === 'hero' && this.heroAction === 1);
     for (var i = 0; i < this.tiles.length; i++) S.focus(this.tiles[i], f && this.area === 'tiles' && i === this.tileIndex);
-    for (i = 0; i < (this.posters || []).length; i++) S.focus(this.posters[i], f && this.area === 'rail' && i === this.railIndex);
-    this.scroller.style.transform = this.area === 'rail' ? 'translateY(-' + SCROLL + 'px)' : 'translateY(0)';
-    if (this.railIndex < this.railOffset) this.railOffset = this.railIndex;
-    if (this.railIndex > this.railOffset + RAIL_VISIBLE - 2 && this.railItems.length > RAIL_VISIBLE) this.railOffset = Math.min(this.railIndex - (RAIL_VISIBLE - 2), this.railItems.length - RAIL_VISIBLE);
-    this.strip.style.transform = 'translateX(-' + (this.railOffset * (POSTER_W + POSTER_GAP)) + 'px)';
+    for (var row = 0; row < 2; row++) {
+      var rail = this.rails[row];
+      if (rail.index < rail.offset) rail.offset = rail.index;
+      if (rail.index >= rail.offset + RAIL_VISIBLE) rail.offset = rail.index - RAIL_VISIBLE + 1;
+      for (i = 0; i < rail.posters.length; i++) S.focus(rail.posters[i], f && this.area === 'rail' && this.railRow === row && i === rail.index);
+      rail.strip.style.transform = 'translateX(-' + (rail.offset * (POSTER_W + POSTER_GAP)) + 'px)';
+    }
+    this.scroller.style.transform = this.area === 'rail' ? 'translateY(-' + (SCROLL + this.railRow * 384) + 'px)' : 'translateY(0)';
+  };
+
+  HomeView.prototype.changeRail = function (row) {
+    var from = this.rails[this.railRow], to = this.rails[row];
+    to.index = Math.min(to.items.length - 1, to.offset + Math.min(RAIL_VISIBLE - 1, from.index - from.offset));
+    this.railRow = row;
+    this.updateFocus();
   };
 
   HomeView.prototype.handleKey = function (key) {
@@ -328,16 +345,44 @@
       if (key === 'left' && this.tileIndex > 0) { this.tileIndex--; this.updateFocus(); return true; }
       if (key === 'right' && this.tileIndex < this.tiles.length - 1) { this.tileIndex++; this.updateFocus(); return true; }
       if (key === 'up' && this.heroItem) { this.area = 'hero'; this.heroAction = 0; this.updateFocus(); return true; }
-      if (key === 'down' && this.railItems.length) { this.area = 'rail'; this.updateFocus(); return true; }
+      if (key === 'down' && this.rails[0].items.length) { this.area = 'rail'; this.railRow = 0; this.updateFocus(); return true; }
       if (key === 'OK') { this.events.emit('navigate', TILES[this.tileIndex].key); return true; }
       return true;
     }
-    // fileira
-    if (key === 'left' && this.railIndex > 0) { this.railIndex--; this.updateFocus(); return true; }
-    if (key === 'right' && this.railIndex < this.railItems.length - 1) { this.railIndex++; this.updateFocus(); return true; }
-    if (key === 'up') { this.area = 'tiles'; this.updateFocus(); return true; }
-    if (key === 'OK' && this.railItems[this.railIndex]) { this.events.emit('selectedItem', this.railItems[this.railIndex].item); return true; }
+    // Fileiras
+    var rail = this.rails[this.railRow];
+    if (key === 'left' && rail.index > 0) { rail.index--; this.updateFocus(); return true; }
+    if (key === 'right' && rail.index < rail.items.length - 1) { rail.index++; this.updateFocus(); return true; }
+    if (key === 'down' && this.railRow === 0 && this.rails[1].items.length) { this.changeRail(1); return true; }
+    if (key === 'up') { if (this.railRow === 1) this.changeRail(0); else { this.area = 'tiles'; this.updateFocus(); } return true; }
+    if (key === 'OK' && rail.items[rail.index]) { this.openRailEntry(rail.items[rail.index]); return true; }
     return true;
+  };
+
+  HomeView.prototype.openRailEntry = function (entry) {
+    if (this.railRow !== 1) { this.events.emit('selectedItem', entry.item); return; }
+    var self = this, item = entry.item, saved = entry.saved;
+    if (item.type !== 'series' || !saved || String(saved.id).indexOf(':episode:') === -1 || !this.metadataLoader) {
+      this.events.emit('playRequested', item); return;
+    }
+    var token = this.resumeToken = {};
+    this.metadataLoader(item, function (meta) {
+      if (self.resumeToken !== token || !self.isActive) return;
+      var seasons = (meta && meta.item && meta.item.seasons) || [];
+      for (var i = 0; i < seasons.length; i++) {
+        var episodes = seasons[i].episodes || [];
+        for (var j = 0; j < episodes.length; j++) {
+          var ep = episodes[j];
+          if (item.id + ':episode:' + ep.id !== saved.id || !ep.stream_url) continue;
+          var resumed = {};
+          for (var key in item) if (Object.prototype.hasOwnProperty.call(item, key)) resumed[key] = item[key];
+          resumed.id = saved.id; resumed.title = saved.title || item.title; resumed.stream_url = ep.stream_url;
+          self.events.emit('playRequested', resumed);
+          return;
+        }
+      }
+      self.events.emit('selectedItem', item);
+    });
   };
 
   /* Voltar dentro da Home: retorna aos blocos antes de sair do app. */
@@ -367,3 +412,4 @@
 
   EP.HomeView = HomeView;
 }(window.EP));
+

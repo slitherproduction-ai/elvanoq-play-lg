@@ -212,6 +212,7 @@
 
   /* ---------- Sobre ---------- */
   var NEWS = [
+    'Tela inicial com duas fileiras: Novidades para você e Continuar assistindo.',
     'Voltar no player fecha os controles primeiro; com a tela limpa, sai do vídeo.',
     'Ao sair do ao vivo, a lista volta no canal que estava tocando.',
     'Pesquise categorias e canais na TV ao Vivo: suba até o campo no topo de cada coluna.',
@@ -242,3 +243,4 @@
 
   EP.SettingsView = SettingsView;
 }(window.EP));
+
