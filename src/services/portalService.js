@@ -158,7 +158,11 @@
     },
 
     serverCodeResolve: function (code) {
-      return Portal.request('server-code-resolve', { code: code }).then(function (r) {
+      if (!Portal.identity) return Promise.resolve({ ok: false, status: 403, body: {}, message: 'Autorize a identificação do aparelho antes de conectar.' });
+      return Portal.register().then(function (registered) {
+        if (!registered.ok) return registered;
+        return Portal.request('server-code-resolve', EP.extend({ code: code, platform: 'webos' }, Portal.identityPayload()));
+      }).then(function (r) {
         var server = r.body && (r.body.server || r.body.data || r.body);
         var host = EP.text(server && server.host);
         r.host = host && EP.PlaylistRules.isHttpUrl(host) && !/[@?#]/.test(host) ? host : '';
@@ -177,3 +181,4 @@
     }
   };
 }(window.EP));
+
