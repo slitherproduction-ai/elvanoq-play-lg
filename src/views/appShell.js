@@ -376,7 +376,8 @@
   }
 
   AppShell.prototype.onSettingsAction = function (action) {
-    if (action === 'sync') this.app.requestPlaylistSync(true);
+    if (action === 'account') this.app.openAccount();
+    else if (action === 'sync') this.app.requestPlaylistSync(true);
     else if (action === 'code') this.app.openServerCodeKeyboard();
   };
 

@@ -30,6 +30,7 @@
     { group: 'Conteúdo', id: 'parental', title: 'Controle parental', sub: 'PIN, conteúdo adulto e bloqueios', icon: 'lock', detail: 'Crie um PIN e escolha as categorias e títulos protegidos. Categorias adultas são protegidas automaticamente.' },
     { group: 'Conteúdo', id: 'categories', title: 'Categorias visíveis', sub: 'Mostrar ou ocultar categorias desta lista', icon: 'grid', detail: 'Oculte categorias que você não usa. Elas somem das listas de categorias, de "Todos" e das grades. Vale só para a lista ativa.' },
     { group: 'Conteúdo', id: 'format', title: 'Formato do ao vivo', sub: 'OK alterna entre Automático, HLS e TS', icon: 'live', detail: 'No Automático, a TV lembra o formato que abriu nesta lista (HLS ou TS) e começa por ele nas próximas vezes e no zapping. Uma escolha manual sempre vence.' },
+    { group: 'Sistema', id: 'account', title: 'Conta', sub: 'Excluir o login desta TV', icon: 'key', detail: 'Apaga os dados de acesso desta TV e volta para a tela de login.' },
     { group: 'Sistema', id: 'diagnostics', title: 'Diagnóstico', sub: 'Versão, lista, reprodução e conexão', icon: 'info', detail: 'Mostra o estado do aplicativo e testa a conexão com o Portal e com o servidor da lista. Nenhum endereço, usuário ou senha aparece aqui.' },
     { group: 'Sistema', id: 'about', title: 'Sobre', sub: 'Versão, novidades e privacidade', icon: 'sparkles', detail: 'Informações sobre o ELVANOQ Play para LG webOS.' }
   ];
@@ -132,6 +133,7 @@
 
   SettingsView.prototype.activate = function () {
     var id = ROWS[this.selected].id;
+    if (id === 'account') { this.events.emit('action', 'account'); return; }
     if (id === 'sync') { this.setStatus('Buscando a lista salva no Portal…'); this.events.emit('action', 'sync'); return; }
     if (id === 'code') { this.events.emit('action', 'code'); return; }
     if (id === 'format') {

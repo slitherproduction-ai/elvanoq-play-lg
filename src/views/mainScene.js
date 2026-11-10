@@ -96,6 +96,10 @@
       this.status.textContent = 'Pressione OK para continuar.';
       return;
     }
+    if (EP.Registry.read('login_removed') === 'true') {
+      this.status.textContent = 'Login excluído. Entre novamente para continuar.';
+      return;
+    }
     this.connect();
   };
 
@@ -135,6 +139,7 @@
   };
 
   MainScene.prototype.runAction = function () {
+    if (this.actionIndex !== 2) EP.Registry.remove('login_removed');
     if (this.actionIndex === 0) {
       if (!Portal.identity) this.giveConsent(); else this.openServerCodeKeyboard();
     } else if (this.actionIndex === 1) {
@@ -204,6 +209,25 @@
   };
 
   /* ---------- fluxo do Portal (registro -> licença -> lista) ---------- */
+  MainScene.prototype.openAccount = function () {
+    var self = this;
+    this.openList({ title: 'Conta', subtitle: 'Excluir o login salvo nesta TV?',
+      items: [{ label: 'Cancelar' }, { label: 'Excluir login' }],
+      onSelect: function (index) {
+        self.dialog.close();
+        if (index !== 1) return;
+        self.licenseTimer.stop();
+        self.shell.stopPlayback();
+        Portal.manual = null;
+        EP.Parental.clearSession();
+        EP.Registry.remove('playlist_metadata');
+        EP.Registry.write('login_removed', 'true');
+        try { window.localStorage.removeItem('elvanoq-lg-playlists-v1'); } catch (_) {}
+        window.location.reload();
+      }
+    });
+  };
+
   MainScene.prototype.connect = function () {
     var self = this;
     this.status.textContent = 'Conectando ao Portal para ativação…';
@@ -352,6 +376,7 @@
           onButton: function (i, password) {
             if (i !== 0 || !password) { self.status.textContent = 'Login por código cancelado.'; return; }
             var playlist = Portal.useManualPlaylist({ name: 'Acesso por código', sourceType: 'xtream', credentials: { host: host, username: username, password: password } });
+            EP.Registry.remove('login_removed');
             self.manualSession = true;
             self.setActivationVisible(false);
             self.shell.show(true);
