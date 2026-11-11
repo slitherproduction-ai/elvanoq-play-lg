@@ -67,11 +67,12 @@
 
     this.parental = new EP.ParentalView(this.root);
     this.categories = new EP.CategoriesView(this.root);
-    this.diagnostics = new DiagnosticsPage(this.root, this.provider);
+    this.diagnostics = new DiagnosticsPage(this.root, this.provider, function () { self.showPage('performance'); });
+    this.performance = new PerformancePage(this.root);
     this.about = new AboutPage(this.root);
     this.parental.events.on('action', function (a) { self.events.emit('action', a); });
     this.categories.events.on('changed', function () { self.events.emit('visibilityChanged'); self.render(); });
-    this.pages = { parental: this.parental, categories: this.categories, diagnostics: this.diagnostics, about: this.about };
+    this.pages = { parental: this.parental, categories: this.categories, diagnostics: this.diagnostics, performance: this.performance, about: this.about };
     this.page = '';
     this.selected = 0; this.hasFocus = false;
     this.showPage('');
@@ -151,6 +152,7 @@
     var page = this.pages[this.page];
     if (page.handleBack && page.handleBack()) return true;
     var from = this.page;
+    if (from === 'performance') { this.showPage('diagnostics'); return true; }
     this.showPage('');
     for (var i = 0; i < ROWS.length; i++) if (ROWS[i].id === from) this.selected = i;
     this.render();
@@ -168,9 +170,9 @@
   };
 
   /* ---------- Diagnóstico ---------- */
-  function DiagnosticsPage(parent, provider) {
-    var page = premiumPage(parent, 'Diagnóstico', 'Estado do aplicativo nesta TV   •   OK testa a conexão');
-    this.root = page.root; this.provider = provider;
+  function DiagnosticsPage(parent, provider, openPerformance) {
+    var page = premiumPage(parent, 'Diagnóstico', 'Estado do aplicativo nesta TV   •   ◀/▶ escolher   •   OK confirmar');
+    this.root = page.root; this.provider = provider; this.openPerformance = openPerformance; this.selected = 0;
     this.groups = [
       { title: 'Aplicativo', x: 64, y: 176, keys: ['app', 'engine', 'screen', 'device'] },
       { title: 'Lista', x: 64, y: 560, keys: ['list', 'source', 'categories', 'cache'] },
@@ -190,9 +192,15 @@
         if (k > 0) S.el(this.root, { x: grp.x + 32, y: y, w: 808, h: 1, css: 'background:rgba(190,222,255,0.08)' });
       }
     }
-    this.button = S.el(this.root, { x: 64, y: 980, w: 300, h: 60, text: 'Testar conexão', className: 'premium-button focused' });
+    this.buttons = [
+      S.el(this.root, { x: 64, y: 980, w: 300, h: 60, text: 'Testar conexão', className: 'premium-button focused' }),
+      S.el(this.root, { x: 388, y: 980, w: 300, h: 60, text: 'Desempenho', className: 'premium-button' })
+    ];
   }
-  DiagnosticsPage.prototype.show = function (visible) { S.show(this.root, visible); if (visible) this.refresh(); };
+  DiagnosticsPage.prototype.renderButtons = function () {
+    for (var i = 0; i < this.buttons.length; i++) S.toggle(this.buttons[i], 'focused', i === this.selected);
+  };
+  DiagnosticsPage.prototype.show = function (visible) { S.show(this.root, visible); if (visible) { this.refresh(); this.renderButtons(); } };
   DiagnosticsPage.prototype.refresh = function () {
     var d = this.provider.diagnostics ? this.provider.diagnostics() : {};
     var labels = { app: 'Versão', engine: 'Navegador da TV', screen: 'Tela', device: 'Código da TV', list: 'Lista', source: 'Origem', categories: 'Categorias', cache: 'Em memória', license: 'Licença', format: 'Formato do ao vivo', remembered: 'Último formato que abriu', parental: 'Controle parental', portal: 'Portal ELVANOQ', server: 'Servidor da lista', tested: 'Último teste' };
@@ -203,6 +211,8 @@
   };
   DiagnosticsPage.prototype.handleKey = function (key) {
     var self = this;
+    if (key === 'left' || key === 'right') { this.selected = key === 'left' ? 0 : 1; this.renderButtons(); return true; }
+    if (key === 'OK' && this.selected === 1) { if (this.openPerformance) this.openPerformance(); return true; }
     if (key === 'OK' && this.provider.test && !this.testing) {
       this.testing = true;
       this.values.portal.value.textContent = 'Testando…';
@@ -212,15 +222,50 @@
     return true;
   };
 
+  /* ---------- Desempenho (Android 2.17.36) ---------- */
+  function PerformancePage(parent) {
+    var page = premiumPage(parent, 'Desempenho', 'Medições desta TV desde que o app abriu   •   OK limpa o histórico   •   Voltar');
+    this.root = page.root;
+    this.groups = [
+      { title: 'Tela e memória', x: 64, y: 176, keys: ['startup', 'uptime', 'memory', 'pauses', 'maxPause'] },
+      { title: 'Catálogo e encerramentos', x: 984, y: 176, keys: ['catalog', 'category', 'lastSync', 'exits', 'lastExit'] }
+    ];
+    this.labels = { startup: 'Abertura do app', uptime: 'Aberto há', memory: 'Memória do app', pauses: 'Pausas da tela', maxPause: 'Maior pausa', catalog: 'Carga do catálogo', category: 'Última categoria', lastSync: 'Última medição', exits: 'Encerramentos inesperados', lastExit: 'Último encerramento' };
+    this.values = {};
+    for (var g = 0; g < this.groups.length; g++) {
+      var grp = this.groups[g];
+      groupLabel(this.root, grp.x + 8, grp.y, grp.title);
+      S.el(this.root, { x: grp.x, y: grp.y + 34, w: 872, h: grp.keys.length * 72 + 24, className: 'premium-card' });
+      for (var k = 0; k < grp.keys.length; k++) {
+        var y = grp.y + 46 + k * 72;
+        var name = S.label(this.root, { x: grp.x + 32, y: y + 18, w: 300, h: 34, size: 22, color: '0x8894A8FF', text: this.labels[grp.keys[k]] });
+        var value = S.label(this.root, { x: grp.x + 332, y: y + 18, w: 508, h: 34, size: 20, weight: 600, align: 'right' });
+        this.values[grp.keys[k]] = value;
+        if (k > 0) S.el(this.root, { x: grp.x + 32, y: y, w: 808, h: 1, css: 'background:rgba(190,222,255,0.08)' });
+      }
+    }
+    S.label(this.root, { x: 64, y: 640, w: 1792, h: 120, size: 20, lineHeight: 30, lines: 4, color: '0x8894A8FF', text: 'Pausas da tela são momentos em que o app parou de responder ao controle por mais de 0,4 s. Um encerramento inesperado é quando o app fechou com a tela aberta, sem sair pelo Voltar — normalmente falta de memória da TV. Nenhum endereço, usuário ou senha aparece aqui.' });
+    this.button = S.el(this.root, { x: 64, y: 980, w: 300, h: 60, text: 'Limpar histórico', className: 'premium-button focused' });
+  }
+  PerformancePage.prototype.show = function (visible) { S.show(this.root, visible); if (visible) this.refresh(); };
+  PerformancePage.prototype.refresh = function () {
+    var d = EP.Perf.summary();
+    for (var key in this.values) if (this.values.hasOwnProperty(key)) this.values[key].textContent = d[key] || '—';
+  };
+  PerformancePage.prototype.handleKey = function (key) {
+    if (key === 'OK') { EP.Perf.clear(); this.refresh(); }
+    return true;
+  };
+
   /* ---------- Sobre ---------- */
   var NEWS = [
+    'Lista atualizada sozinha com o app aberto: filmes e séries novos aparecem sem precisar fechar o app.',
+    'Diagnóstico com Desempenho: memória, pausas da tela, tempos do catálogo e encerramentos.',
     'Tela inicial com duas fileiras: Novidades para você e Continuar assistindo.',
     'Voltar no player fecha os controles primeiro; com a tela limpa, sai do vídeo.',
     'Ao sair do ao vivo, a lista volta no canal que estava tocando.',
     'Pesquise categorias e canais na TV ao Vivo: suba até o campo no topo de cada coluna.',
-    'O vídeo volta sozinho quando o sinal trava; filmes retomam do mesmo ponto.',
-    'Rever programas nos canais com arquivo, com três formatos de catch-up.',
-    'Categorias adultas protegidas pelo PIN automaticamente.'
+    'O vídeo volta sozinho quando o sinal trava; filmes retomam do mesmo ponto.'
   ];
   function AboutPage(parent) {
     var page = premiumPage(parent, 'Sobre', 'ELVANOQ Play para LG webOS');

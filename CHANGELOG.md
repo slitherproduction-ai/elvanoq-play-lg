@@ -1,3 +1,10 @@
+# 1.1.6 — 2026-11-11
+
+- **Lista atualizada com o app aberto** (Android 2.17.39): a TV deixa o app em segundo plano por dias. Ao voltar para o app (5 s depois), a cada 15 min e ao fechar o player, um catálogo carregado há mais de 6 h é recarregado em segundo plano, sem tela de espera e sem mexer no foco da seção aberta; as seções pegam a lista nova na próxima vez que forem abertas e as categorias já vistas são baixadas de novo. Nunca durante um vídeo. Se falhar, fica a lista atual e a próxima tentativa só depois de mais 6 h.
+- **Diagnóstico > Desempenho** (Android 2.17.36, `src/core/perfMonitor.js`): tempo de abertura, tempo aberto, memória do app (`performance.memory`, quando a TV informa), pausas da tela acima de 0,4 s com a seção em que ocorreram, duração da carga do catálogo e da última categoria, e encerramentos inesperados da sessão anterior (app fechado com a tela aberta, sem sair pelo Voltar), com seção, versão e memória do último registro. OK limpa o histórico. Nada de usuário, senha ou endereço é guardado.
+- No Diagnóstico, ◀/▶ escolhem entre "Testar conexão" e "Desempenho".
+- Não se aplicam aqui: o download de filmes e séries por categoria (o catálogo já é sob demanda por categoria, como no Roku), a correção de foco de Filmes/Séries do Android (o foco aqui é controlado pelo app, sem esse efeito) e as otimizações nativas do APK.
+
 # 1.1.5 — 2026-11-09
 
 - Tela inicial com duas fileiras: Novidades para você e Continuar assistindo.
