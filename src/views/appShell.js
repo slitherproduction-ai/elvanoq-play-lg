@@ -13,6 +13,11 @@
   var HOME = 0, LIVE = 1, MOVIES = 2, SERIES = 3, SEARCH = 4, LIBRARY = 5, SETTINGS = 6;
   var CATEGORY_LIMIT = 5000, CACHE_CATEGORIES = 10, CACHE_ITEMS = 12000;
   var KIND_OF = {}; KIND_OF[LIVE] = 'live'; KIND_OF[MOVIES] = 'movies'; KIND_OF[SERIES] = 'series';
+  var SECTION_NAMES = ['Início', 'TV ao Vivo', 'Filmes', 'Séries', 'Busca', 'Minha Lista', 'Ajustes'];
+  /* Catálogo com o app aberto (Android 2.17.39): a TV deixa o app em segundo
+   * plano por dias. Ao voltar, a cada 15 min e ao fechar o player, um catálogo
+   * com mais de 6 h é recarregado sem tela de espera; nunca durante um vídeo. */
+  var CATALOG_FRESH_MS = 6 * 60 * 60 * 1000;
 
   function AppShell(stage, app) {
     var self = this;
@@ -82,6 +87,7 @@
       self.refreshCurrent(true);
       // Ao vivo: a lista volta com o canal que estava tocando e a prévia nele.
       if (liveItem && self.selectedIndex === LIVE && !d.isVisible()) self.views[LIVE].returnToChannel(liveItem.id);
+      self.scheduleCatalogRefresh();
     });
     p.events.on('channelRequested', function (r) { self.playLiveItem(r.item, p.content.liveQueue, r.index); });
     p.events.on('favoriteRequested', function (r) {
@@ -113,6 +119,7 @@
     }
     this.views[HOME].setActive(index === HOME);
     if (index !== LIVE) this.views[LIVE].stopPreview();
+    EP.Perf.setSection(SECTION_NAMES[index]);
     this.refreshCurrent(false);
   };
 
@@ -246,12 +253,12 @@
     var key = kind + ':' + request.id, cached = this.categoryCache[key];
     if (cached) { this.touchCategory(key); view.setCategoryItems({ id: request.id, items: cached }); return; }
     if (this.categoryPending[key]) return;
-    var token = this.catalogToken;
+    var token = this.catalogToken, started = new Date().getTime();
     this.categoryPending[key] = true;
     EP.CatalogService.loadCategory(this.xtream, kind, { id: request.id, name: request.name }, CATEGORY_LIMIT).then(function (result) {
       if (token !== self.catalogToken) return;
       delete self.categoryPending[key];
-      if (result.ok) self.storeCategory(key, result.items);
+      if (result.ok) { self.storeCategory(key, result.items); EP.Perf.recordSync('category', started, result.items.length); }
       view.setCategoryItems({ id: request.id, items: result.items || [], error: result.ok ? '' : result.error });
     });
   };
@@ -392,23 +399,32 @@
     this.loadCatalog(payload.playlist);
   };
 
+  /* Dados do catálogo carregado (comum à carga normal e à atualização em segundo plano). */
+  AppShell.prototype.applyCatalogResult = function (playlist, result, started) {
+    this.catalog = result.channels;
+    this.categories = result.categories;
+    this.xtream = result.xtream || null;
+    this.lazy = !!result.lazy;
+    this.liveCategories = result.liveCategories || [];
+    this.movieCategories = result.movieCategories || [];
+    this.seriesCategories = result.seriesCategories || [];
+    this.resetCategoryCache();
+    EP.CatalogService.clearSearchCache();
+    this.catalogVersion = (this.catalogVersion || 0) + 1;
+    this.catalogPlaylist = playlist;
+    this.catalogLoadedAt = new Date().getTime();
+    EP.Perf.recordSync('catalog', started, this.lazy ? this.allCategoryNames().length : (this.catalog || []).length);
+    EP.Perf.markReady();
+  };
+
   AppShell.prototype.loadCatalog = function (playlist) {
-    var self = this;
+    var self = this, started = new Date().getTime();
     var token = this.catalogToken = {};
     this.app.setLoading('Carregando catálogo da sua lista…');
     EP.CatalogService.load(playlist).then(function (result) {
       if (token !== self.catalogToken) return;
       self.app.setLoading('');
-      self.catalog = result.channels;
-      self.categories = result.categories;
-      self.xtream = result.xtream || null;
-      self.lazy = !!result.lazy;
-      self.liveCategories = result.liveCategories || [];
-      self.movieCategories = result.movieCategories || [];
-      self.seriesCategories = result.seriesCategories || [];
-      self.resetCategoryCache();
-      EP.CatalogService.clearSearchCache();
-      self.catalogVersion = (self.catalogVersion || 0) + 1;
+      self.applyCatalogResult(playlist, result, started);
       EP.ListScope.set(EP.ListScope.idFor(playlist));
       migrateLegacyState(self.catalog);
       self.epg.configure(result.epg, function () { if (self.selectedIndex === LIVE) self.views[LIVE].setEpg(); });
@@ -419,6 +435,33 @@
       if (token !== self.catalogToken) return;
       self.app.setLoading((error && error.message) || 'Catálogo indisponível.');
     });
+  };
+
+  /* Atualização em segundo plano: sem tela de espera e sem redesenhar a seção
+   * aberta (o foco não se move). As seções pegam a lista nova na próxima vez
+   * que forem abertas; categorias já abertas são baixadas de novo. Se falhar,
+   * fica a lista atual e a próxima tentativa só depois de mais 6 h. */
+  AppShell.prototype.maybeRefreshCatalog = function () {
+    var self = this, playlist = this.catalogPlaylist, at = new Date().getTime();
+    if (!playlist || this.backgroundRefresh || document.hidden) return;
+    if (this.playerView.isVisible()) return;
+    if (at - Math.max(this.catalogLoadedAt || 0, this.refreshAttemptAt || 0) < CATALOG_FRESH_MS) return;
+    this.refreshAttemptAt = at;
+    this.backgroundRefresh = true;
+    var token = this.catalogToken;
+    EP.CatalogService.load(playlist).then(function (result) {
+      self.backgroundRefresh = false;
+      if (token !== self.catalogToken || self.catalogPlaylist !== playlist) return;
+      self.applyCatalogResult(playlist, result, at);
+      self.homeDirty = true;
+      if (self.selectedIndex === SETTINGS) self.views[SETTINGS].setStatus('Lista atualizada automaticamente.');
+    }, function () { self.backgroundRefresh = false; });
+  };
+
+  AppShell.prototype.scheduleCatalogRefresh = function () {
+    var self = this;
+    if (this.refreshTimer) clearTimeout(this.refreshTimer);
+    this.refreshTimer = setTimeout(function () { self.refreshTimer = null; self.maybeRefreshCatalog(); }, 5000);
   };
 
   /* v0.4.0 guardava só ids em "elvanoq-lg-app-state-v2". Converte uma única vez. */

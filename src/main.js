@@ -2,6 +2,7 @@
 (function (EP) {
   'use strict';
   function exitApp() {
+    EP.Perf.markCleanExit();
     try { if (window.webOS && typeof window.webOS.platformBack === 'function') { window.webOS.platformBack(); return; } } catch (_) {}
     try { window.close(); } catch (_) {}
   }
@@ -39,6 +40,7 @@
     var stage = document.getElementById('stage');
     EP.Stage.fit(stage);
     var scene = EP.scene = new EP.MainScene(stage);
+    EP.Perf.start();
 
     document.addEventListener('keydown', function (event) {
       var key = EP.keyName(event);
@@ -52,7 +54,8 @@
 
     // Ao sair para a Home da TV, pausa a reprodução e descarrega a prévia.
     document.addEventListener('visibilitychange', function () {
-      if (!document.hidden) return;
+      // Na volta: catálogo com mais de 6 h é atualizado em segundo plano.
+      if (!document.hidden) { try { scene.shell.scheduleCatalogRefresh(); } catch (_) {} return; }
       try { scene.shell.views[1].stopPreview(); } catch (_) {}
       // Pausa do sistema conta como pausa do usuário: a vigilância não reconecta na volta.
       try { var pv = scene.shell.playerView; if (pv.isVisible()) { pv.userPaused = true; pv.video.pause(); } } catch (_) {}
@@ -66,6 +69,9 @@
     });
     var initialLink = deepLinkFrom(launchParams());
     if (initialLink) scene.setDeepLink(initialLink);
+
+    // App aberto por muito tempo (a TV raramente fecha o app): confere a cada 15 min.
+    setInterval(function () { try { scene.shell.maybeRefreshCatalog(); } catch (_) {} }, 15 * 60 * 1000);
 
     scene.start();
     hideSplash();
