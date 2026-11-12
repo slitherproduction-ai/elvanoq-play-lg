@@ -11,6 +11,12 @@
 
 # Changelog — ELVANOQ Play LG webOS
 
+## 1.1.7 — 12/11/2026 (paridade com o Android 2.17.45 / 2.17.48 e o Roku 1.1.6)
+
+- **Barra de tempo com foco** (filmes, episódios e rever): com a tela limpa, ◀/▶ já voltam e avançam; com os controles na tela, ▲ leva o foco para a barra (barra mais grossa e bolinha branca) e ▼ volta para os botões. Passo de 10 s com aceleração ao apertar seguido (até 0,7 s entre toques): ×3 a partir do 4º toque e ×6 a partir do 7º; trocar de direção recomeça no passo de 10 s. Os toques se acumulam num destino mostrado na barra e o salto é aplicado uma vez, 0,6 s depois do último toque (ou na hora com OK, ▼ ou ao esconder os controles). ⏪/⏩ usam a mesma aceleração. Com o Magic Remote, clicar na barra salta para aquele ponto. Ao vivo não muda.
+- **Capas pelo uso e pelo aparelho:** `EP.sizedImage` aceita o papel da imagem (`poster`, `detail`, `heroPoster`, `backdrop`, `still`). Padrão: w342, w500, w780, w1280 e w300; em TVs simples (tela abaixo de Full HD ou até 1 GB informado pelo navegador): w185, w342, w500, w780 e w185. Tamanhos fixos (`'w342'`) continuam aceitos.
+- Novo teste `tests/v117-features.test.cjs`.
+
 ## 1.1.4 — 08/11/2026 (auditoria técnica)
 
 - **Categoria acima do limite:** quando o servidor tem mais de 5.000 títulos numa categoria, a grade mostra "5.000 de N títulos (use a busca para os demais)" em vez de cortar sem aviso.

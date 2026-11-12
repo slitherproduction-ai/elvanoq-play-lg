@@ -205,6 +205,8 @@ video.sg-video::-webkit-media-controls { display: none !important; }
 .osd-control.focused { background: #f4f8ff; color: var(--bg); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
 .timeline { position: absolute; height: 6px; border-radius: 3px; background: rgba(244, 248, 255, 0.25); overflow: hidden; }
 .timeline .fill { height: 100%; border-radius: 4px; background: var(--accent); }
+.timeline.focused { height: 10px !important; margin-top: -2px; background: rgba(244, 248, 255, 0.35); }
+.timeline-knob { position: absolute; border-radius: 50%; background: #f4f8ff; box-shadow: 0 0 0 4px rgba(0, 215, 255, 0.45), 0 6px 18px rgba(0, 0, 0, 0.5); pointer-events: none; }
 
 .fade { transition: opacity 260ms var(--ease); }
 .slide-content { transition: opacity 380ms var(--ease), transform 420ms var(--ease); }

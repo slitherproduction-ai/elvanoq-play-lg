@@ -37,6 +37,17 @@
     this.liveGuideLabel = S.label(osd, { x: 64, y: 846, w: 1500, h: 32, size: 22, weight: 500, color: '0xD6DEEBFF', visible: false });
     this.timeline = S.el(osd, { x: 64, y: 898, w: 1792, h: 6, className: 'timeline', html: '<div class="fill" style="width:0"></div>' });
     this.timelineProgress = this.timeline.firstChild;
+    this.timelineKnob = S.el(osd, { x: 52, y: 889, w: 24, h: 24, className: 'timeline-knob', visible: false });
+    // Magic Remote: clicar na barra salta para aquele ponto.
+    this.timeline.addEventListener('click', function (event) {
+      if (!self.hasTimeline()) return;
+      var box = self.timeline.getBoundingClientRect();
+      if (!box.width) return;
+      self.seekTarget = Math.max(0, Math.min(self.video.duration - 1, self.video.duration * (event.clientX - box.left) / box.width));
+      self.setTimelineFocus(true);
+      self.commitTimelineSeek();
+      self.showOsd();
+    });
     this.timeLabel = S.label(osd, { x: 64, y: 914, w: 700, h: 30, size: 22, weight: 600 });
     this.trackStatus = S.label(osd, { x: 856, y: 914, w: 1000, h: 30, size: 20, align: 'right', color: '0x8894A8FF' });
     this.trackPanelTitle = document.createElement('span');
@@ -60,6 +71,10 @@
     this.content = null; this.selectedControl = 1; this.lastPersistedSecond = -30; this.liveRetries = 0;
     this.awaitingNextEpisode = false; this.subtitlesDisabled = false;
     this.osdTimer = new EP.Timer(5, false, function () { if (self.isPlaying()) self.hideOsd(); });
+    // Barra de tempo com foco (Android 2.17.48 / Roku 1.1.6): os toques se
+    // acumulam num destino e o salto é aplicado 0,6 s depois do último.
+    this.seekFocus = false; this.seekTarget = -1; this.seekPresses = 0; this.lastSeekPress = 0;
+    this.seekTimer = new EP.Timer(0.6, false, function () { self.commitTimelineSeek(); });
     this.nextEpisodeTimer = new EP.Timer(6, false, function () { self.requestNextEpisode(); });
     this.retryTimer = new EP.Timer(2, false, function () { self.onRetryTimer(); });
     this.bindVideo();
@@ -122,6 +137,7 @@
     this.lastPersistedSecond = -30;
     this.shouldRestorePosition = content.resumePosition > 0;
     this.liveRetries = 0;
+    this.seekTimer.stop(); this.seekTarget = -1; this.setTimelineFocus(false);
     this.rawCredentialTried = false;
     this.catchupIndex = 0;
     // Filme/episódio retomado começa direto no ponto salvo (antes de bufferizar
@@ -338,14 +354,28 @@
     }
     if (key === 'play' || key === 'pause') { this.togglePlayPause(key); return true; }
     if (key === 'stop') { this.close(); return true; }
-    if (key === 'rev') { this.seekBy(-10); this.showOsd(); return true; }
-    if (key === 'fwd') { this.seekBy(10); this.showOsd(); return true; }
+    if (key === 'rev' || key === 'fwd') {
+      var dir = key === 'fwd' ? 1 : -1;
+      if (this.hasTimeline() && !this.failed) this.stepTimeline(dir); else { this.seekBy(dir * 10); this.showOsd(); }
+      return true;
+    }
     // Android 2.17.30 / Roku 1.1.1: com os controles na tela, Voltar primeiro
     // fecha os controles; com a tela limpa, Voltar sai do player. Na tela de
     // erro ou sem vídeo carregado, Voltar sai direto.
     if (key === 'back') {
       if (S.isVisible(this.osd) && !this.failed && this.hasSource()) { this.hideOsd(); return true; }
       this.close();
+      return true;
+    }
+    // Barra de tempo (Android 2.17.48): em filmes e episódios, com a tela limpa
+    // ou com o foco na barra, ◀/▶ voltam e avançam direto, com aceleração.
+    var osdOn = S.isVisible(this.osd), timeline = this.hasTimeline() && !this.failed;
+    if ((key === 'left' || key === 'right') && timeline && (this.seekFocus || !osdOn)) { this.stepTimeline(key === 'right' ? 1 : -1); return true; }
+    if (key === 'up' && timeline && osdOn && !this.seekFocus) { this.setTimelineFocus(true); this.showOsd(); return true; }
+    if (key === 'down' && this.seekFocus) { this.commitTimelineSeek(); this.setTimelineFocus(false); this.showOsd(); return true; }
+    if (key === 'OK' && this.seekFocus && osdOn) {
+      if (this.seekTarget >= 0) this.commitTimelineSeek(); else this.togglePlayPause('play');
+      this.showOsd();
       return true;
     }
     if (key === 'left') { if (this.selectedControl > 0) this.selectedControl--; this.updateControlFocus(); this.showOsd(); return true; }
@@ -409,6 +439,8 @@
   PlayerView.prototype.showOsd = function () {
     this.osdVisible = true;
     S.show(this.osd, true);
+    if (this.seekFocus && !this.hasTimeline()) this.setTimelineFocus(false);
+    this.refreshControlsHint();
     if (this.content) this.updateTimeline();
     if (this.isLive()) this.renderLiveGuide();
     if (this.awaitingNextEpisode) S.show(this.nextPanel, true);
@@ -417,13 +449,56 @@
 
   PlayerView.prototype.hideOsd = function () {
     this.osdTimer.stop();
+    this.commitTimelineSeek();
+    this.setTimelineFocus(false);
     this.osdVisible = false;
     S.show(this.osd, false);
     S.show(this.nextPanel, false);
   };
 
+  /* Passo de 10 s; apertando seguido (até 0,7 s entre toques) vira ×3 a
+   * partir do 4º toque e ×6 a partir do 7º. */
+  PlayerView.timelineStepSeconds = function (presses) { return 10 * (presses >= 7 ? 6 : presses >= 4 ? 3 : 1); };
+
+  PlayerView.prototype.stepTimeline = function (direction) {
+    var now = Date.now(), v = this.video;
+    // Trocar de direção recomeça no passo menor (para corrigir o ponto com precisão).
+    this.seekPresses = this.seekPresses > 0 && now - this.lastSeekPress <= 700 && direction === this.seekDirection ? this.seekPresses + 1 : 1;
+    this.lastSeekPress = now;
+    this.seekDirection = direction;
+    if (this.seekTarget < 0) this.seekTarget = v.currentTime || 0;
+    var target = this.seekTarget + direction * PlayerView.timelineStepSeconds(this.seekPresses);
+    this.seekTarget = Math.max(0, Math.min(v.duration - 1, target));
+    this.setTimelineFocus(true);
+    this.showOsd();
+    this.seekTimer.start();
+  };
+
+  PlayerView.prototype.commitTimelineSeek = function () {
+    this.seekTimer.stop();
+    if (this.seekTarget < 0) return;
+    var target = this.seekTarget;
+    this.seekTarget = -1;
+    try { this.video.currentTime = target; } catch (_) {}
+    if (S.isVisible(this.osd) && this.content) this.updateTimeline();
+  };
+
+  PlayerView.prototype.setTimelineFocus = function (focused) {
+    this.seekFocus = !!focused;
+    if (this.timeline.classList) this.timeline.classList.toggle('focused', this.seekFocus);
+    S.show(this.timelineKnob, this.seekFocus);
+    for (var i = 0; i < 5; i++) S.focus(this.controlLabels[i], !this.seekFocus && i === this.selectedControl);
+    this.refreshControlsHint();
+  };
+
+  PlayerView.prototype.refreshControlsHint = function () {
+    this.controls.textContent = this.seekFocus ? '←/→ voltar e avançar   •   ▼ botões'
+      : this.hasTimeline() ? '←/→ selecionar   •   ▲ barra de tempo   •   OK confirmar'
+      : '←/→ selecionar   •   OK confirmar';
+  };
+
   PlayerView.prototype.updateControlFocus = function () {
-    for (var i = 0; i < 5; i++) S.focus(this.controlLabels[i], i === this.selectedControl);
+    for (var i = 0; i < 5; i++) S.focus(this.controlLabels[i], !this.seekFocus && i === this.selectedControl);
     this.refreshTrackStatus();
   };
 
@@ -510,9 +585,12 @@
       this.timeLabel.textContent = now ? 'AO VIVO   •   ' + now.title : 'Transmissão ao vivo';
       return;
     }
-    var v = this.video, pct = Math.max(0, Math.min(1, v.currentTime / v.duration));
+    // Salto ainda não aplicado: a barra mostra o ponto de destino.
+    var v = this.video, position = this.seekTarget >= 0 ? this.seekTarget : v.currentTime;
+    var pct = Math.max(0, Math.min(1, position / v.duration));
     this.timelineProgress.style.width = (pct * 100).toFixed(2) + '%';
-    this.timeLabel.textContent = EP.formatTime(v.currentTime) + ' / ' + EP.formatTime(v.duration);
+    this.timelineKnob.style.left = Math.round(52 + 1792 * pct) + 'px';
+    this.timeLabel.textContent = EP.formatTime(position) + ' / ' + EP.formatTime(v.duration);
   };
 
   PlayerView.prototype.persistProgress = function (completed) {
