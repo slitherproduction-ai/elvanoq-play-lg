@@ -81,9 +81,9 @@
   };
 
   DetailView.prototype.setArt = function (backdrop, poster) {
-    S.setPoster(this.poster, poster || backdrop, 'w500');
+    S.setPoster(this.poster, poster || backdrop, 'detail');
     this.posterFallback.textContent = poster || backdrop ? '' : EP.displayTitle(this.item.title);
-    var art = backdrop ? EP.sizedImage(backdrop, 'w1280') : EP.sizedImage(poster, 'w500');
+    var art = backdrop ? EP.sizedImage(backdrop, 'backdrop') : EP.sizedImage(poster, 'detail');
     this.backdrop.style.backgroundImage = art ? 'url("' + art.replace(/"/g, '%22') + '")' : 'none';
     this.backdrop.style.opacity = art ? '0.55' : '0';
     this.backdrop.style.filter = backdrop ? 'none' : 'blur(18px)';
@@ -149,7 +149,7 @@
     var box = S.el(this.strip, { x: index * (CARD_W + CARD_GAP), y: 0, w: CARD_W, h: CARD_H + 92 });
     var img = S.el(box, { x: 0, y: 0, w: CARD_W, h: CARD_H, className: 'poster has-art', css: 'border-radius:12px;background-image:linear-gradient(135deg,#1a2b4a,#0d1422 70%)' });
     var art = ep.image || this.item.backdrop || this.item.logo;
-    if (art) { S.setPoster(img, art, 'w300'); img.style.backgroundSize = 'cover'; }
+    if (art) { S.setPoster(img, art, 'still'); img.style.backgroundSize = 'cover'; }
     var saved = EP.find(LS.load().continue_watching, function (x) { return x.id === self.episodeId(ep); });
     if (saved && saved.duration_seconds) {
       var track = document.createElement('div'); track.className = 'progress-track';

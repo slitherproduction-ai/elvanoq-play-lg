@@ -259,6 +259,7 @@
 
   /* ---------- Sobre ---------- */
   var NEWS = [
+    'Avance e volte filmes com ◀/▶ na barra de tempo, mais rápido ao apertar seguido.',
     'Lista atualizada sozinha com o app aberto: filmes e séries novos aparecem sem precisar fechar o app.',
     'Diagnóstico com Desempenho: memória, pausas da tela, tempos do catálogo e encerramentos.',
     'Tela inicial com duas fileiras: Novidades para você e Continuar assistindo.',

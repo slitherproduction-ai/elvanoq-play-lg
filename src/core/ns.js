@@ -6,13 +6,33 @@
 (function (root) {
   'use strict';
   var EP = root.EP = root.EP || {};
-  EP.VERSION = '1.1.6';
+  EP.VERSION = '1.1.7';
 
   /* Capas do TMDB no tamanho em que aparecem (Roku 1.1.1): menos download,
    * menos decodificação e menos memória. Outras URLs passam sem mudança. */
   EP.sizedImage = function (url, size) {
     url = url ? String(url) : '';
+    if (EP.IMAGE_ROLES[size]) size = EP.IMAGE_ROLES[size][EP.lowImageTier() ? 0 : 1];
     return size ? url.replace(/(image\.tmdb\.org\/t\/p\/)[^\/]+\//, '$1' + size + '/') : url;
+  };
+
+  /* Tamanho conforme o uso e o aparelho (Android 2.17.45 / Roku 1.1.6):
+   * [aparelho simples, padrão]. Simples = tela menor que Full HD ou até 1 GB
+   * de memória informado pelo navegador. */
+  EP.IMAGE_ROLES = {
+    poster: ['w185', 'w342'],
+    detail: ['w342', 'w500'],
+    heroPoster: ['w500', 'w780'],
+    backdrop: ['w780', 'w1280'],
+    still: ['w185', 'w300']
+  };
+  var lowTier = null;
+  EP.lowImageTier = function () {
+    if (lowTier === null) {
+      var w = window.screen && window.screen.width, mem = window.navigator && window.navigator.deviceMemory;
+      lowTier = !!((w && w < 1600) || (mem && mem <= 1));
+    }
+    return lowTier;
   };
 
   EP.text = function (value) {
