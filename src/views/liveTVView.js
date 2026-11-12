@@ -12,6 +12,7 @@
   'use strict';
   var S = EP.Stage, LS = EP.LocalState, P = EP.Parental, G = EP.EpgRules;
   var ROWS = 13, ROW_Y = 300, STRIDE = 52, SEARCH_Y = 232, SEARCH_H = 54;
+  var PREVIEW_RELEASE_MS = 1200;
   var FIXED = { 'Todas': true, 'Favoritos': true };
 
   function lower(value) { return EP.lower(EP.text(value)); }
@@ -431,8 +432,16 @@
     if (!this.visibleChannels.length) return;
     var selected = this.visibleChannels[this.selectedIndex];
     if (P.isBlockedItem(selected.category, selected.id)) { this.previewHint.textContent = 'Conteúdo protegido. Valide o PIN em Ajustes para continuar.'; return; }
+    var request = { item: selected, channels: this.visibleChannels, index: this.selectedIndex }, self = this;
+    var hadPreview = !!this.preview.getAttribute('src');
     this.stopPreview();
-    this.events.emit('playRequested', { item: selected, channels: this.visibleChannels, index: this.selectedIndex });
+    // Com a prévia tocando, o servidor ainda conta aquela conexão por um
+    // instante; em listas com 1 conexão o tela cheia ficava em "Carregando".
+    // Espera a TV soltar a prévia antes de abrir o mesmo canal.
+    if (!hadPreview) { this.events.emit('playRequested', request); return; }
+    if (this.openPending) return;
+    this.openPending = true;
+    setTimeout(function () { self.openPending = false; self.events.emit('playRequested', request); }, PREVIEW_RELEASE_MS);
   };
 
   /* Volta do player (Android 2.17.29 / Roku 1.1.1): seleciona o canal que

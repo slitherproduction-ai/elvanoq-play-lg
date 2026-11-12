@@ -1,3 +1,9 @@
+# Próxima versão (não lançada)
+
+- **Canais que ficavam em "Carregando"**: se o canal não começa em 12 s (filmes e episódios: 30 s), a TV desiste daquela conexão e segue a reconexão normal — na 1ª tentativa troca TS ↔ HLS — e, se nada abrir, mostra o erro com "Tentar" em vez de carregar para sempre.
+- Ao abrir em tela cheia um canal que estava na prévia, a TV solta a prévia antes (1,2 s): em listas com 1 conexão o servidor ainda contava a prévia e segurava o tela cheia.
+- Vindo do Samsung MSX (`4a20b0f`). Novo teste `tests/open-timeout.test.cjs`.
+
 # 1.1.6 — 2026-11-11
 
 - **Lista atualizada com o app aberto** (Android 2.17.39): a TV deixa o app em segundo plano por dias. Ao voltar para o app (5 s depois), a cada 15 min e ao fechar o player, um catálogo carregado há mais de 6 h é recarregado em segundo plano, sem tela de espera e sem mexer no foco da seção aberta; as seções pegam a lista nova na próxima vez que forem abertas e as categorias já vistas são baixadas de novo. Nunca durante um vídeo. Se falhar, fica a lista atual e a próxima tentativa só depois de mais 6 h.
