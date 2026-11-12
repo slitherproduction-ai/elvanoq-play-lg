@@ -1,3 +1,9 @@
+# Próxima versão (não lançada)
+
+- **Desempenho — carga do catálogo sumia:** a tela guardava só as 6 últimas medições, e abrir 6 categorias apagava a carga do catálogo ("Ainda não medido" com a lista carregada). Agora a última medição de cada tipo fica guardada à parte.
+- **Desempenho — pausas com valor menor que o limite:** a pausa mostrava só o tempo além do intervalo de 250 ms (0,2 s para um travamento de 0,45 s), enquanto o texto da tela fala em pausas acima de 0,4 s. Agora mostra o tempo inteiro sem resposta.
+- Novo teste `tests/perf-monitor.test.cjs`.
+
 # 1.1.6 — 2026-11-11
 
 - **Lista atualizada com o app aberto** (Android 2.17.39): a TV deixa o app em segundo plano por dias. Ao voltar para o app (5 s depois), a cada 15 min e ao fechar o player, um catálogo carregado há mais de 6 h é recarregado em segundo plano, sem tela de espera e sem mexer no foco da seção aberta; as seções pegam a lista nova na próxima vez que forem abertas e as categorias já vistas são baixadas de novo. Nunca durante um vídeo. Se falhar, fica a lista atual e a próxima tentativa só depois de mais 6 h.

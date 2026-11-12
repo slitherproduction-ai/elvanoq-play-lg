@@ -22,7 +22,7 @@
   var startedAt = now();
   var state = {
     started: false, visible: true, section: 'Início',
-    pauses: 0, pauseTotal: 0, maxPause: 0, recentPauses: [], syncs: [], exits: [],
+    pauses: 0, pauseTotal: 0, maxPause: 0, recentPauses: [], syncs: [], lastByStage: {}, exits: [],
     startupMs: null
   };
 
@@ -73,7 +73,9 @@
         var t = now(), gap = t - last;
         last = t;
         if (!state.visible || gap < PAUSE_MS) return;
-        var ms = gap - TICK_MS;
+        // Tempo em que o controle ficou sem resposta (o intervalo inteiro), o
+        // mesmo número que o limite de 0,4 s explicado na tela.
+        var ms = gap;
         state.pauses++; state.pauseTotal += ms; state.maxPause = Math.max(state.maxPause, ms);
         pushRecent(state.recentPauses, { ms: ms, section: state.section, at: t });
       }, TICK_MS);
@@ -92,20 +94,22 @@
     /* Saída pelo Voltar da Início: não conta como encerramento inesperado. */
     markCleanExit: function () { state.visible = false; writeBeat(true); },
     markReady: function () { if (state.startupMs === null) state.startupMs = sinceLoad(); },
-    recordSync: function (stage, startedMs, items) { pushRecent(state.syncs, { stage: stage, ms: now() - startedMs, items: items || 0, at: now() }); },
+    recordSync: function (stage, startedMs, items) {
+      var entry = { stage: stage, ms: now() - startedMs, items: items || 0, at: now() };
+      pushRecent(state.syncs, entry);
+      // A última medição de cada tipo fica guardada à parte: abrir 6 categorias
+      // não pode apagar a carga do catálogo da tela.
+      state.lastByStage[stage] = entry;
+    },
     clear: function () {
-      state.pauses = 0; state.pauseTotal = 0; state.maxPause = 0; state.recentPauses = []; state.syncs = []; state.exits = [];
+      state.pauses = 0; state.pauseTotal = 0; state.maxPause = 0; state.recentPauses = []; state.syncs = []; state.lastByStage = {}; state.exits = [];
       EP.Registry.remove(EXITS_KEY);
     },
 
     /* Valores prontos para a tela e para o relatório. */
     summary: function () {
       var memory = memoryMb(), lastSync = state.syncs[0], lastExit = state.exits[0], lastPause = state.recentPauses[0];
-      var catalog = null, category = null;
-      for (var i = 0; i < state.syncs.length; i++) {
-        if (!catalog && state.syncs[i].stage === 'catalog') catalog = state.syncs[i];
-        if (!category && state.syncs[i].stage === 'category') category = state.syncs[i];
-      }
+      var catalog = state.lastByStage.catalog || null, category = state.lastByStage.category || null;
       return {
         startup: state.startupMs !== null ? seconds(state.startupMs) : 'Não medida',
         uptime: Math.round((now() - startedAt) / 60000) + ' min',
