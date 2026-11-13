@@ -11,6 +11,14 @@
 
 # Changelog — ELVANOQ Play LG webOS
 
+## 1.1.8 — 13/11/2026 (abertura mais rápida, igual às versões MSX 1.1.8)
+
+- **Da prévia para a tela cheia sem nova conexão:** com a prévia tocando o canal, OK (ou o 2º clique do Magic Remote) passa o mesmo `<video>` para o player, que só ocupa a tela inteira — a imagem continua sem recarregar, sem abrir um segundo decodificador e sem gastar uma 2ª conexão da lista. O `<video>` parado do player vira a nova prévia (`PlayerView.swapVideo`, `LiveTVView.releasePreview` / `setPreviewElement`; os eventos valem só para o vídeo em uso). A espera de 1,2 s fica só para quando a prévia está em outro canal.
+- **1ª tentativa mais curta sem formato lembrado:** enquanto a TV ainda não sabe se a lista abre em TS ou HLS, o ao vivo troca de formato depois de 6 s sem imagem (antes 12 s). Com o formato lembrado, continua 12 s.
+- **Pré-conexão com o servidor dos vídeos:** ao carregar a lista, a TV já resolve o endereço e abre a conexão (`dns-prefetch` + `preconnect`).
+- **Diagnóstico › Desempenho › Abertura de vídeos:** do clique até a primeira imagem, por canais, filmes e episódios (último, média, pior e quantos não abriram), mais quantas vezes abriu direto da prévia.
+- Testes `tests/open-speed.test.cjs` e `tests/open-timeout.test.cjs` (6 s / 12 s).
+
 ## 1.1.7 — 12/11/2026 (paridade com o Android 2.17.45 / 2.17.48 e o Roku 1.1.6)
 
 - **Barra de tempo com foco** (filmes, episódios e rever): com a tela limpa, ◀/▶ já voltam e avançam; com os controles na tela, ▲ leva o foco para a barra (barra mais grossa e bolinha branca) e ▼ volta para os botões. Passo de 10 s com aceleração ao apertar seguido (até 0,7 s entre toques): ×3 a partir do 4º toque e ×6 a partir do 7º; trocar de direção recomeça no passo de 10 s. Os toques se acumulam num destino mostrado na barra e o salto é aplicado uma vez, 0,6 s depois do último toque (ou na hora com OK, ▼ ou ao esconder os controles). ⏪/⏩ usam a mesma aceleração. Com o Magic Remote, clicar na barra salta para aquele ponto. Ao vivo não muda.

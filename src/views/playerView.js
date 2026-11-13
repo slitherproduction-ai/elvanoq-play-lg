@@ -15,6 +15,9 @@
   // servidor segura a conexão (limite de conexões, canal fora do ar). Passado
   // este tempo sem começar, conta como falha e segue o fluxo de reconexão.
   var OPEN_LIVE_MS = 12000, OPEN_VOD_MS = 30000;
+  // Sem formato do ao vivo lembrado (1ª vez nesta lista), a 1ª tentativa
+  // desiste antes: o outro formato (TS <-> HLS) é tentado em 6 s, não em 12 s.
+  var OPEN_LIVE_FIRST_MS = 6000;
   var STALL_TEXT = 'O sinal parou de chegar. Reconectando…';
 
   function PlayerView(parent) {
@@ -81,7 +84,8 @@
     this.seekTimer = new EP.Timer(0.6, false, function () { self.commitTimelineSeek(); });
     this.nextEpisodeTimer = new EP.Timer(6, false, function () { self.requestNextEpisode(); });
     this.retryTimer = new EP.Timer(2, false, function () { self.onRetryTimer(); });
-    this.bindVideo();
+    this.bindVideo(video);
+    video.epPlayerBound = true;
     this.updateControlFocus();
   }
 
@@ -91,36 +95,70 @@
   PlayerView.prototype.isCatchup = function () { return !!(this.content && this.content.catchupUrls && this.content.catchupUrls.length); };
   PlayerView.prototype.hasTimeline = function () { var d = this.video.duration; return !this.isLive() && isFinite(d) && d > 0; };
 
-  PlayerView.prototype.bindVideo = function () {
-    var self = this, v = this.video;
-    v.addEventListener('playing', function () {
-      if (self.loadToken) self.loadToken.started = true;
-      self.clearOpenTimeout();
-      self.liveRetries = 0;
-      self.userPaused = false;
-      if (self.isLive()) LF.remember(LF.formatOf(self.currentUrl)); // "Automático": lembra o que abriu
-      if (self.hint.textContent === STALL_TEXT) self.hint.textContent = self.defaultHint();
-      S.setButton(self.controlLabels[1], '', 'Pausar');
-      if (self.shouldRestorePosition && self.content.resumePosition > 0) {
-        // O ponto salvo já foi aplicado no loadedmetadata (Roku 1.1.1: PlayStart).
-        // Só se a TV ignorou aquele salto é que ele é feito aqui.
-        if (v.currentTime < self.content.resumePosition - 5) { try { v.currentTime = self.content.resumePosition; } catch (_) {} }
-        self.shouldRestorePosition = false;
-        self.hint.textContent = 'Retomando de onde você parou.';
-      } else if (/Carregando|Reconectando|Tentando/.test(self.hint.textContent)) self.hint.textContent = self.defaultHint();
-      self.refreshTrackStatus();
-      self.showOsd();
-    });
-    v.addEventListener('pause', function () { if (!v.ended && !self.failed) { S.setButton(self.controlLabels[1], '', 'Retomar'); self.showOsd(); } });
-    v.addEventListener('waiting', function () { if (self.hint.textContent !== STALL_TEXT) self.hint.textContent = 'Carregando stream…'; self.showOsd(); });
-    v.addEventListener('timeupdate', function () { self.onPositionChanged(); });
-    v.addEventListener('loadedmetadata', function () {
+  /* Os eventos valem só para o <video> em uso: ao abrir a partir da prévia o
+   * player assume o <video> da TV ao Vivo (swapVideo) e devolve o dele. */
+  PlayerView.prototype.bindVideo = function (v) {
+    var self = this;
+    function on(name, fn) { v.addEventListener(name, function (e) { if (v === self.video) fn(e); }); }
+    on('playing', function () { self.onPlaying(); });
+    on('pause', function () { if (!v.ended && !self.failed) { S.setButton(self.controlLabels[1], '', 'Retomar'); self.showOsd(); } });
+    on('waiting', function () { if (self.hint.textContent !== STALL_TEXT) self.hint.textContent = 'Carregando stream…'; self.showOsd(); });
+    on('timeupdate', function () { self.onPositionChanged(); });
+    on('loadedmetadata', function () {
       self.refreshTrackStatus();
       // Retomada depois de travar: volta à última posição do filme/episódio.
       if (self.pendingSeek > 0) { try { v.currentTime = self.pendingSeek; } catch (_) {} self.pendingSeek = 0; }
     });
-    v.addEventListener('ended', function () { self.onFinished(); });
-    v.addEventListener('error', function () { self.onLoadError(self.loadToken); });
+    on('ended', function () { self.onFinished(); });
+    on('error', function () { self.onLoadError(self.loadToken); });
+  };
+
+  PlayerView.prototype.onPlaying = function () {
+    var v = this.video;
+    if (this.loadToken) this.loadToken.started = true;
+    this.clearOpenTimeout();
+    this.recordOpen(true);
+    this.liveRetries = 0;
+    this.userPaused = false;
+    if (this.isLive()) LF.remember(LF.formatOf(this.currentUrl)); // "Automático": lembra o que abriu
+    if (this.hint.textContent === STALL_TEXT) this.hint.textContent = this.defaultHint();
+    S.setButton(this.controlLabels[1], '', 'Pausar');
+    if (this.shouldRestorePosition && this.content.resumePosition > 0) {
+      // O ponto salvo já foi aplicado no loadedmetadata (Roku 1.1.1: PlayStart).
+      // Só se a TV ignorou aquele salto é que ele é feito aqui.
+      if (v.currentTime < this.content.resumePosition - 5) { try { v.currentTime = this.content.resumePosition; } catch (_) {} }
+      this.shouldRestorePosition = false;
+      this.hint.textContent = 'Retomando de onde você parou.';
+    } else if (/Carregando|Reconectando|Tentando/.test(this.hint.textContent)) this.hint.textContent = this.defaultHint();
+    this.refreshTrackStatus();
+    this.showOsd();
+  };
+
+  /* Tempo do clique até a imagem (Ajustes > Diagnóstico > Desempenho). */
+  PlayerView.prototype.openKind = function () {
+    var c = this.content || {};
+    if (this.isLive() || this.isCatchup()) return 'live';
+    return c.nextEpisode || /:episode:/.test(String(c.id || '')) ? 'series' : 'movies';
+  };
+  PlayerView.prototype.recordOpen = function (ok) {
+    var mark = this.openMark;
+    if (!mark) return;
+    this.openMark = null;
+    if (EP.Perf && EP.Perf.recordOpen) EP.Perf.recordOpen(mark.kind, ok ? new Date().getTime() - mark.at : -1, mark.adopted);
+  };
+
+  /* Troca o <video> do player pelo da prévia (que já está conectado ao canal)
+   * e devolve o antigo, parado, para a TV ao Vivo usar como nova prévia. */
+  PlayerView.prototype.swapVideo = function (el) {
+    var old = this.video;
+    if (!el || el === old) return null;
+    if (!el.epPlayerBound) { this.bindVideo(el); el.epPlayerBound = true; }
+    el.className = 'sg-video';
+    el.style.cssText = 'left:0px;top:0px;width:1920px;height:1080px';
+    old.parentNode.replaceChild(el, old);
+    this.video = el;
+    if (el.paused) { try { var a = el.play(); if (a && a.catch) a.catch(function () {}); } catch (_) {} }
+    return old;
   };
 
   PlayerView.prototype.defaultHint = function () {
@@ -162,7 +200,9 @@
     var url = content.streamUrl;
     if (this.isCatchup()) { url = content.catchupUrls[0]; this.nowPlaying.textContent = 'REVENDO'; }
     else if (this.isLive()) url = LF.apply(url);
-    this.load(url);
+    var adopted = !!content.adoptedUrl && content.adoptedUrl === url;
+    this.openMark = { kind: this.openKind(), at: content.requestedAt || new Date().getTime(), adopted: adopted };
+    if (adopted) this.continueAdopted(url); else this.load(url);
     this.startWatchdog();
     this.hint.textContent = this.defaultHint();
     if (this.isLive()) this.renderLiveGuide(); else S.show(this.liveGuideLabel, false);
@@ -191,6 +231,14 @@
     this.armOpenTimeout(token);
   };
 
+  /* Vídeo vindo da prévia: mesma conexão, sem recarregar. */
+  PlayerView.prototype.continueAdopted = function (url) {
+    var v = this.video, token = this.loadToken = {};
+    this.currentUrl = url;
+    if (!v.paused && v.readyState > 2) { this.onPlaying(); return; }
+    this.armOpenTimeout(token);
+  };
+
   PlayerView.prototype.clearOpenTimeout = function () {
     if (this.openTimer) clearTimeout(this.openTimer);
     this.openTimer = null;
@@ -208,7 +256,12 @@
       var hidden = typeof document.visibilityState === 'string' && document.visibilityState !== 'visible';
       if (self.userPaused || hidden) { self.armOpenTimeout(token); return; }
       self.onLoadError(token);
-    }, this.isLive() ? OPEN_LIVE_MS : OPEN_VOD_MS);
+    }, this.openTimeoutMs());
+  };
+
+  PlayerView.prototype.openTimeoutMs = function () {
+    if (!this.isLive()) return OPEN_VOD_MS;
+    return !this.isCatchup() && this.liveRetries === 0 && !LF.preferred() ? OPEN_LIVE_FIRST_MS : OPEN_LIVE_MS;
   };
 
   PlayerView.prototype.renderLiveGuide = function () {
@@ -271,6 +324,7 @@
     var self = this;
     this.stopWatchdog();
     this.failed = true;
+    this.recordOpen(false);
     this.hint.textContent = message;
     S.setButton(this.controlLabels[1], '', 'Tentar');
     this.selectedControl = 1; this.updateControlFocus();
@@ -644,6 +698,7 @@
 
   PlayerView.prototype.stopPlayback = function () {
     this.clearOpenTimeout();
+    this.openMark = null;
     this.stopWatchdog();
     this.retryTimer.stop();
     this.osdTimer.stop();

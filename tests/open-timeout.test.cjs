@@ -2,7 +2,8 @@
 const assert = require('node:assert/strict');
 global.window = global;
 global.document = { visibilityState: 'visible' };
-global.EP = {};
+let remembered = 'ts';
+global.EP = { LiveFormat: { preferred: () => remembered } };
 require('../src/views/playerView.js');
 const P = EP.PlayerView.prototype;
 
@@ -13,8 +14,8 @@ function fire() { const p = pending; pending = []; p.forEach(t => t.fn()); retur
 function fake(live) {
   const f = {
     video: { currentTime: 0, paused: true }, content: { liveQueue: live ? [1] : [] }, userPaused: false, errors: 0,
-    isLive() { return live; }, onLoadError(t) { if (t.failed) return; t.failed = true; this.errors++; },
-    clearOpenTimeout: P.clearOpenTimeout, armOpenTimeout: P.armOpenTimeout
+    liveRetries: 0, isLive() { return live; }, isCatchup() { return false; }, onLoadError(t) { if (t.failed) return; t.failed = true; this.errors++; },
+    clearOpenTimeout: P.clearOpenTimeout, armOpenTimeout: P.armOpenTimeout, openTimeoutMs: P.openTimeoutMs
   };
   f.loadToken = {};
   return f;
@@ -35,4 +36,10 @@ f = fake(true); const old = f.loadToken; f.armOpenTimeout(old); f.loadToken = {}
 // Pausado pelo usuário: espera de novo, sem erro.
 f = fake(true); f.userPaused = true; f.armOpenTimeout(f.loadToken); fire(); assert.equal(f.errors, 0); assert.equal(pending.length, 1);
 pending = [];
+// 1.1.7: sem formato lembrado, a 1ª tentativa do ao vivo desiste em 6 s; depois, 12 s.
+remembered = '';
+f = fake(true); f.armOpenTimeout(f.loadToken); assert.deepEqual(fire(), [6000]);
+f = fake(true); f.liveRetries = 1; f.armOpenTimeout(f.loadToken); assert.deepEqual(fire(), [12000]);
+f = fake(false); f.armOpenTimeout(f.loadToken); assert.deepEqual(fire(), [30000]);
+remembered = 'ts';
 console.log('open-timeout ok');
