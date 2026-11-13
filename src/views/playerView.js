@@ -11,6 +11,10 @@
   'use strict';
   var S = EP.Stage, LS = EP.LocalState, P = EP.Parental, F = EP.StreamFormat, G = EP.EpgRules, LF = EP.LiveFormat;
   var WATCH_MS = 4000, STALL_LIVE_MS = 20000, STALL_VOD_MS = 30000, STALL_RETRIES = 3;
+  // Abertura sem resposta: a TV fica em "Carregando" sem disparar erro quando o
+  // servidor segura a conexão (limite de conexões, canal fora do ar). Passado
+  // este tempo sem começar, conta como falha e segue o fluxo de reconexão.
+  var OPEN_LIVE_MS = 12000, OPEN_VOD_MS = 30000;
   var STALL_TEXT = 'O sinal parou de chegar. Reconectando…';
 
   function PlayerView(parent) {
@@ -90,6 +94,8 @@
   PlayerView.prototype.bindVideo = function () {
     var self = this, v = this.video;
     v.addEventListener('playing', function () {
+      if (self.loadToken) self.loadToken.started = true;
+      self.clearOpenTimeout();
       self.liveRetries = 0;
       self.userPaused = false;
       if (self.isLive()) LF.remember(LF.formatOf(self.currentUrl)); // "Automático": lembra o que abriu
@@ -182,6 +188,27 @@
     try { v.load(); } catch (_) {}
     var attempt = v.play();
     if (attempt && attempt.catch) attempt.catch(function () {});
+    this.armOpenTimeout(token);
+  };
+
+  PlayerView.prototype.clearOpenTimeout = function () {
+    if (this.openTimer) clearTimeout(this.openTimer);
+    this.openTimer = null;
+  };
+
+  PlayerView.prototype.armOpenTimeout = function (token) {
+    var self = this;
+    this.clearOpenTimeout();
+    this.openTimer = setTimeout(function () {
+      self.openTimer = null;
+      if (!self.content || token !== self.loadToken || token.failed || token.started) return;
+      var v = self.video;
+      if (v.currentTime > 0.5 && !v.paused) { token.started = true; return; }
+      // Pausado pelo usuário ou app em segundo plano: espera de novo.
+      var hidden = typeof document.visibilityState === 'string' && document.visibilityState !== 'visible';
+      if (self.userPaused || hidden) { self.armOpenTimeout(token); return; }
+      self.onLoadError(token);
+    }, this.isLive() ? OPEN_LIVE_MS : OPEN_VOD_MS);
   };
 
   PlayerView.prototype.renderLiveGuide = function () {
@@ -616,6 +643,7 @@
   };
 
   PlayerView.prototype.stopPlayback = function () {
+    this.clearOpenTimeout();
     this.stopWatchdog();
     this.retryTimer.stop();
     this.osdTimer.stop();
