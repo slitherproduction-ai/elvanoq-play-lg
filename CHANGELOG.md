@@ -15,7 +15,9 @@
 
 - **Barra de tempo com foco** (filmes, episódios e rever): com a tela limpa, ◀/▶ já voltam e avançam; com os controles na tela, ▲ leva o foco para a barra (barra mais grossa e bolinha branca) e ▼ volta para os botões. Passo de 10 s com aceleração ao apertar seguido (até 0,7 s entre toques): ×3 a partir do 4º toque e ×6 a partir do 7º; trocar de direção recomeça no passo de 10 s. Os toques se acumulam num destino mostrado na barra e o salto é aplicado uma vez, 0,6 s depois do último toque (ou na hora com OK, ▼ ou ao esconder os controles). ⏪/⏩ usam a mesma aceleração. Com o Magic Remote, clicar na barra salta para aquele ponto. Ao vivo não muda.
 - **Capas pelo uso e pelo aparelho:** `EP.sizedImage` aceita o papel da imagem (`poster`, `detail`, `heroPoster`, `backdrop`, `still`). Padrão: w342, w500, w780, w1280 e w300; em TVs simples (tela abaixo de Full HD ou até 1 GB informado pelo navegador): w185, w342, w500, w780 e w185. Tamanhos fixos (`'w342'`) continuam aceitos.
-- Novo teste `tests/v117-features.test.cjs`.
+- **Canais que ficavam em "Carregando"** (igual à Samsung): se o canal não começa em 12 s (filmes e episódios: 30 s), a TV desiste daquela conexão e segue a reconexão normal — na 1ª tentativa troca TS ↔ HLS — e, se nada abrir, mostra o erro com "Tentar" em vez de carregar para sempre.
+- Ao abrir em tela cheia um canal que estava na prévia, a TV solta a prévia antes (1,2 s): em listas com 1 conexão o servidor ainda contava a prévia e segurava o tela cheia.
+- Novos testes `tests/v117-features.test.cjs` e `tests/open-timeout.test.cjs`.
 
 ## 1.1.4 — 08/11/2026 (auditoria técnica)
 
