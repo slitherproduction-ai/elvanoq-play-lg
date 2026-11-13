@@ -94,9 +94,39 @@
     this.lazy = false; this.isLoading = false; this.loadError = ''; this.favoriteChannels = []; this.loadingCategoryId = '';
     this.localState = LS.load();
     this.requestTimer = new EP.Timer(0.35, false, function () { self.requestCurrentCategory(); });
-    this.preview.addEventListener('playing', function () { if (self.previewing) { S.show(self.previewIcon, false); S.show(self.liveBadge, true); EP.LiveFormat.remember(EP.LiveFormat.formatOf(self.preview.src)); } });
-    this.preview.addEventListener('error', function () { if (self.previewing) { self.previewHint.textContent = 'Não foi possível iniciar a prévia deste canal.'; } });
+    this.bindPreview(this.preview);
   }
+
+  /* Eventos só do <video> que é a prévia agora (ele troca com o do player). */
+  LiveTVView.prototype.bindPreview = function (el) {
+    var self = this;
+    if (el.epPreviewBound) return;
+    el.epPreviewBound = true;
+    el.addEventListener('playing', function () { if (el === self.preview && self.previewing) { S.show(self.previewIcon, false); S.show(self.liveBadge, true); EP.LiveFormat.remember(EP.LiveFormat.formatOf(self.previewUrl)); } });
+    el.addEventListener('error', function () { if (el === self.preview && self.previewing) { self.previewHint.textContent = 'Não foi possível iniciar a prévia deste canal.'; } });
+  };
+
+  /* Tela cheia a partir da prévia (1.1.7): entrega o <video> da prévia, já
+   * conectado ao canal, para o player — sem nova conexão e sem esperar. */
+  LiveTVView.prototype.releasePreview = function () {
+    if (!this.previewing || !this.preview.getAttribute('src')) return null;
+    var out = { video: this.preview, url: this.previewUrl };
+    this.previewing = false; this.previewId = '';
+    S.show(this.previewIcon, true); S.show(this.liveBadge, false);
+    return out;
+  };
+
+  /* Recebe o <video> parado do player como nova prévia. */
+  LiveTVView.prototype.setPreviewElement = function (el) {
+    if (!el) return;
+    el.className = 'sg-video';
+    el.setAttribute('playsinline', '');
+    el.style.cssText = 'left:1244px;top:176px;width:612px;height:344px;border-radius:18px';
+    this.root.insertBefore(el, this.previewIcon);
+    this.preview = el;
+    this.bindPreview(el);
+    this.updateSelection();
+  };
 
   LiveTVView.prototype.show = function (visible) { S.show(this.root, visible); };
   LiveTVView.prototype.setContentFocus = function (focused) { this.hasFocus = focused; this.updateFocus(); };
@@ -422,7 +452,9 @@
     var selected = this.visibleChannels[this.selectedIndex];
     if (P.isBlockedItem(selected.category, selected.id)) { this.previewHint.textContent = 'Conteúdo protegido. Valide o PIN em Ajustes para continuar.'; return; }
     this.previewing = true;
-    this.preview.src = EP.LiveFormat.apply(selected.stream_url);
+    this.previewId = selected.id;
+    this.previewUrl = EP.LiveFormat.apply(selected.stream_url);
+    this.preview.src = this.previewUrl;
     var attempt = this.preview.play();
     if (attempt && attempt.catch) attempt.catch(function () {});
     this.previewHint.textContent = 'Prévia em execução   •   OK para assistir em tela cheia';
@@ -433,6 +465,12 @@
     var selected = this.visibleChannels[this.selectedIndex];
     if (P.isBlockedItem(selected.category, selected.id)) { this.previewHint.textContent = 'Conteúdo protegido. Valide o PIN em Ajustes para continuar.'; return; }
     var request = { item: selected, channels: this.visibleChannels, index: this.selectedIndex }, self = this;
+    // A prévia já está neste canal: o player assume o mesmo vídeo.
+    if (this.previewing && this.previewId === selected.id && this.preview.getAttribute('src')) {
+      request.adopt = true;
+      this.events.emit('playRequested', request);
+      return;
+    }
     var hadPreview = !!this.preview.getAttribute('src');
     this.stopPreview();
     // Com a prévia tocando, o servidor ainda conta aquela conexão por um
@@ -475,7 +513,7 @@
   /* Descarrega o decodificador: na LG só há um pipeline de vídeo confiável. */
   LiveTVView.prototype.stopPreview = function () {
     var was = this.previewing;
-    this.previewing = false;
+    this.previewing = false; this.previewId = '';
     try { this.preview.pause(); } catch (_) {}
     if (this.preview.getAttribute('src')) { this.preview.removeAttribute('src'); try { this.preview.load(); } catch (_) {} }
     S.show(this.previewIcon, true); S.show(this.liveBadge, false);

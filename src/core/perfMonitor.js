@@ -23,8 +23,10 @@
   var state = {
     started: false, visible: true, section: 'Início',
     pauses: 0, pauseTotal: 0, maxPause: 0, recentPauses: [], syncs: [], exits: [],
-    startupMs: null
+    startupMs: null,
+    opens: { live: [], movies: [], series: [] }, openFails: { live: 0, movies: 0, series: 0 }, openReused: 0
   };
+  var MAX_OPENS = 20;
 
   function pushRecent(list, item) { list.unshift(item); if (list.length > MAX_RECENT) list.length = MAX_RECENT; }
 
@@ -92,9 +94,19 @@
     /* Saída pelo Voltar da Início: não conta como encerramento inesperado. */
     markCleanExit: function () { state.visible = false; writeBeat(true); },
     markReady: function () { if (state.startupMs === null) state.startupMs = sinceLoad(); },
+    /* Abertura de vídeo: do clique até a imagem (ms; -1 = não abriu). */
+    recordOpen: function (kind, ms, reused) {
+      if (!state.opens[kind]) return;
+      if (ms < 0) { state.openFails[kind]++; return; }
+      // Da prévia: já estava conectado; conta à parte para não mascarar a média.
+      if (reused) { state.openReused++; return; }
+      state.opens[kind].unshift(ms);
+      if (state.opens[kind].length > MAX_OPENS) state.opens[kind].length = MAX_OPENS;
+    },
     recordSync: function (stage, startedMs, items) { pushRecent(state.syncs, { stage: stage, ms: now() - startedMs, items: items || 0, at: now() }); },
     clear: function () {
       state.pauses = 0; state.pauseTotal = 0; state.maxPause = 0; state.recentPauses = []; state.syncs = []; state.exits = [];
+      state.opens = { live: [], movies: [], series: [] }; state.openFails = { live: 0, movies: 0, series: 0 }; state.openReused = 0;
       EP.Registry.remove(EXITS_KEY);
     },
 
@@ -106,7 +118,16 @@
         if (!catalog && state.syncs[i].stage === 'catalog') catalog = state.syncs[i];
         if (!category && state.syncs[i].stage === 'category') category = state.syncs[i];
       }
+      function opens(kind) {
+        var list = state.opens[kind], fails = state.openFails[kind];
+        if (!list.length) return fails ? 'Não abriu (' + fails + ')' : 'Ainda não medido';
+        var total = 0, max = 0;
+        for (var j = 0; j < list.length; j++) { total += list[j]; max = Math.max(max, list[j]); }
+        return 'Último ' + seconds(list[0]) + ' • média ' + seconds(total / list.length) + ' • pior ' + seconds(max) + (fails ? ' • ' + fails + ' sem abrir' : '');
+      }
       return {
+        openLive: opens('live'), openMovies: opens('movies'), openSeries: opens('series'),
+        openReused: state.openReused ? state.openReused + (state.openReused === 1 ? ' vez' : ' vezes') : 'Nenhuma',
         startup: state.startupMs !== null ? seconds(state.startupMs) : 'Não medida',
         uptime: Math.round((now() - startedAt) / 60000) + ' min',
         memory: memory ? Math.round(memory.used) + ' de ' + Math.round(memory.limit) + ' MB' : 'Não informada pela TV',

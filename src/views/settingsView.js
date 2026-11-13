@@ -228,9 +228,10 @@
     this.root = page.root;
     this.groups = [
       { title: 'Tela e memória', x: 64, y: 176, keys: ['startup', 'uptime', 'memory', 'pauses', 'maxPause'] },
-      { title: 'Catálogo e encerramentos', x: 984, y: 176, keys: ['catalog', 'category', 'lastSync', 'exits', 'lastExit'] }
+      { title: 'Catálogo e encerramentos', x: 984, y: 176, keys: ['catalog', 'category', 'lastSync', 'exits', 'lastExit'] },
+      { title: 'Abertura de vídeos (clique até a imagem)', x: 64, y: 628, keys: ['openLive', 'openMovies', 'openSeries', 'openReused'] }
     ];
-    this.labels = { startup: 'Abertura do app', uptime: 'Aberto há', memory: 'Memória do app', pauses: 'Pausas da tela', maxPause: 'Maior pausa', catalog: 'Carga do catálogo', category: 'Última categoria', lastSync: 'Última medição', exits: 'Encerramentos inesperados', lastExit: 'Último encerramento' };
+    this.labels = { startup: 'Abertura do app', uptime: 'Aberto há', memory: 'Memória do app', pauses: 'Pausas da tela', maxPause: 'Maior pausa', catalog: 'Carga do catálogo', category: 'Última categoria', lastSync: 'Última medição', exits: 'Encerramentos inesperados', lastExit: 'Último encerramento', openLive: 'Canais', openMovies: 'Filmes', openSeries: 'Episódios', openReused: 'Direto da prévia' };
     this.values = {};
     for (var g = 0; g < this.groups.length; g++) {
       var grp = this.groups[g];
@@ -244,7 +245,7 @@
         if (k > 0) S.el(this.root, { x: grp.x + 32, y: y, w: 808, h: 1, css: 'background:rgba(190,222,255,0.08)' });
       }
     }
-    S.label(this.root, { x: 64, y: 640, w: 1792, h: 120, size: 20, lineHeight: 30, lines: 4, color: '0x8894A8FF', text: 'Pausas da tela são momentos em que o app parou de responder ao controle por mais de 0,4 s. Um encerramento inesperado é quando o app fechou com a tela aberta, sem sair pelo Voltar — normalmente falta de memória da TV. Nenhum endereço, usuário ou senha aparece aqui.' });
+    S.label(this.root, { x: 984, y: 674, w: 872, h: 280, size: 20, lineHeight: 30, wrap: true, color: '0x8894A8FF', text: 'Pausas da tela são momentos em que o app parou de responder ao controle por mais de 0,4 s. Um encerramento inesperado é quando o app fechou com a tela aberta, sem sair pelo Voltar — normalmente falta de memória da TV. Abertura de vídeos conta do clique até a primeira imagem, com as novas tentativas; "Direto da prévia" é quando o canal da prévia foi para a tela cheia sem nova conexão. Nenhum endereço, usuário ou senha aparece aqui.' });
     this.button = S.el(this.root, { x: 64, y: 980, w: 300, h: 60, text: 'Limpar histórico', className: 'premium-button focused' });
   }
   PerformancePage.prototype.show = function (visible) { S.show(this.root, visible); if (visible) this.refresh(); };
@@ -259,6 +260,7 @@
 
   /* ---------- Sobre ---------- */
   var NEWS = [
+    'Canais abrem na hora a partir da prévia, sem nova conexão; e o Desempenho mostra quanto cada vídeo demorou para abrir.',
     'Avance e volte filmes com ◀/▶ na barra de tempo, mais rápido ao apertar seguido.',
     'Lista atualizada sozinha com o app aberto: filmes e séries novos aparecem sem precisar fechar o app.',
     'Diagnóstico com Desempenho: memória, pausas da tela, tempos do catálogo e encerramentos.',

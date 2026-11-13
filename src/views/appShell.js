@@ -50,7 +50,7 @@
       var resume = LS.resumePositionFor(item);
       if (item.type === 'movies' && resume > 0) self.playCatalogItem(item, resume); else openOrPlay(item);
     });
-    v[LIVE].events.on('playRequested', function (r) { self.playLiveItem(r.item, r.channels, r.index); });
+    v[LIVE].events.on('playRequested', function (r) { self.playLiveItem(r.item, r.channels, r.index, r.adopt); });
     v[MOVIES].events.on('selectedItem', openOrPlay);
     v[SERIES].events.on('selectedItem', openOrPlay);
     v[LIVE].events.on('categoryRequested', function (r) { self.requestCategory(LIVE, r); });
@@ -415,7 +415,27 @@
     this.catalogLoadedAt = new Date().getTime();
     EP.Perf.recordSync('catalog', started, this.lazy ? this.allCategoryNames().length : (this.catalog || []).length);
     EP.Perf.markReady();
+    var sample = this.xtream ? this.xtream.host : (this.catalog && this.catalog.length ? this.catalog[0].stream_url : '');
+    preconnect(sample);
   };
+
+  /* Pré-conexão (1.1.7): DNS e conexão com o servidor dos vídeos prontos
+   * antes do primeiro play. A TV que não suporta simplesmente ignora. */
+  var preconnected = {};
+  function preconnect(url) {
+    var m = /^(https?:\/\/[^\/?#]+)/i.exec(String(url || ''));
+    if (!m || preconnected[m[1]] || m[1].toLowerCase() === (window.location.protocol + '//' + window.location.host).toLowerCase()) return;
+    preconnected[m[1]] = true;
+    var head = document.head || document.getElementsByTagName('head')[0];
+    if (!head) return;
+    var rels = ['dns-prefetch', 'preconnect'];
+    for (var i = 0; i < rels.length; i++) {
+      var link = document.createElement('link');
+      link.rel = rels[i]; link.href = m[1]; // sem crossorigin: o <video> usa o mesmo tipo de conexão
+      head.appendChild(link);
+    }
+  }
+  AppShell.preconnect = preconnect;
 
   AppShell.prototype.loadCatalog = function (playlist) {
     var self = this, started = new Date().getTime();
@@ -542,8 +562,15 @@
 
   /* ---------- reprodução ---------- */
   AppShell.prototype.startPlayback = function (content) {
-    var p = this.playerView;
-    this.views[LIVE].stopPreview();
+    var p = this.playerView, live = this.views[LIVE];
+    if (!content.requestedAt) content.requestedAt = new Date().getTime();
+    // Da prévia para a tela cheia: o player fica com o <video> da prévia
+    // (sem nova conexão e sem segundo decodificador).
+    var handed = content.adoptPreview ? live.releasePreview() : null;
+    if (handed) {
+      var old = p.swapVideo(handed.video);
+      if (old) { live.setPreviewElement(old); content.adoptedUrl = handed.url; } else live.stopPreview();
+    } else live.stopPreview();
     p.play(content);
     Portal.ensurePlayable().then(function (ok) {
       if (ok || p.content !== content) return;
@@ -561,11 +588,11 @@
     this.startPlayback({ streamUrl: item.stream_url, id: item.id, title: EP.displayTitle(item.title), category: item.category, resumePosition: resume || 0, persistEnabled: true, skipIntroEnd: 0, nextEpisode: null, liveQueue: [], saved: savedRef(item) });
   };
 
-  AppShell.prototype.playLiveItem = function (item, channels, index) {
+  AppShell.prototype.playLiveItem = function (item, channels, index, adoptPreview) {
     if (!item || !item.stream_url) return;
     var self = this;
     this.clearEpisodeQueue();
-    var content = { streamUrl: item.stream_url, id: item.id, title: EP.displayTitle(item.title), category: item.category, resumePosition: 0, persistEnabled: false, skipIntroEnd: 0, nextEpisode: null, liveQueue: channels, liveIndex: index, liveGuide: this.epg.guideFor(item), logo: item.logo };
+    var content = { adoptPreview: !!adoptPreview, streamUrl: item.stream_url, id: item.id, title: EP.displayTitle(item.title), category: item.category, resumePosition: 0, persistEnabled: false, skipIntroEnd: 0, nextEpisode: null, liveQueue: channels, liveIndex: index, liveGuide: this.epg.guideFor(item), logo: item.logo };
     this.startPlayback(content);
     if (!content.liveGuide.now) this.epg.request(item, function () { if (self.playerView.content === content) self.playerView.setLiveGuide(self.epg.guideFor(item)); });
     var state = LS.load();
