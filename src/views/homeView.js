@@ -106,6 +106,7 @@
     var items = (payload && payload.items) || [];
     this.metadataLoader = payload && payload.metadataLoader;
     this.catalogItems = items;
+    this.recentItems = (payload && payload.recent && payload.recent.length) ? payload.recent : null;
     if (!items.length) {
       this.heroTimer.stop();
       this.slides = [];
@@ -249,7 +250,9 @@
     }
     this.rails[1].items = items;
     items = []; seen = {};
-    var sorted = vod.slice().sort(function (a, b) { return addedValue(b) > addedValue(a) ? 1 : addedValue(b) < addedValue(a) ? -1 : 0; });
+    var recentPool = vod;
+    if (this.recentItems) { recentPool = []; for (i = 0; i < this.recentItems.length; i++) if (this.recentItems[i].type !== 'live') recentPool.push(this.recentItems[i]); }
+    var sorted = recentPool.slice().sort(function (a, b) { return addedValue(b) > addedValue(a) ? 1 : addedValue(b) < addedValue(a) ? -1 : 0; });
     var titles = {};
     for (i = 0; i < sorted.length && items.length < RAIL_LIMIT; i++) {
       var key = EP.lower(EP.displayTitle(sorted[i].title)) + '|' + (sorted[i].year || '');

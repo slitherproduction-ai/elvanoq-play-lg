@@ -161,7 +161,11 @@
       items: this.visibleCatalog(), categories: this.visibleCategoryNames(),
       metadataLoader: function (item, cb) { EP.MetadataService.load(item, self.xtream).then(cb); }
     };
-    if (index === HOME) base.items = this.filterVisible(this.homeItems());
+    if (index === HOME) {
+      base.items = this.filterVisible(this.homeItems());
+      // Novidades: na lista Xtream, só a semente (lançamentos), sem os salvos.
+      if (this.lazy) base.recent = this.filterVisible(this.catalog || []);
+    }
     if (index === SETTINGS) {
       base.items = this.pool().slice(0, 3000); base.categories = this.allCategoryNames();
       base.categoryLists = { live: this.categoryList('live'), movies: this.categoryList('movies'), series: this.categoryList('series') };

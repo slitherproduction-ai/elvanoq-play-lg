@@ -10,6 +10,15 @@
   'use strict';
   var R = function () { return EP.PlaylistRules; };
   var SEED_LIMIT = 150, CATEGORY_LIMIT = 5000, SEARCH_LIMIT = 120;
+  var NEWS_CATEGORY = /lan[cç]amento|novidade|recente|adicionad|estreia|new release|recently|latest/i, ADULT_CATEGORY = /xxx|adult|\+ ?18|18 ?\+/i;
+  function newsCategory(categories) {
+    for (var i = 0; i < categories.length; i++) {
+      var name = String(categories[i].name || '');
+      if (NEWS_CATEGORY.test(name) && !ADULT_CATEGORY.test(name)) return categories[i];
+    }
+    for (i = 0; i < categories.length; i++) if (!ADULT_CATEGORY.test(String(categories[i].name || ''))) return categories[i];
+    return categories[0];
+  }
 
   function fail(error, fallback) {
     return new Error(error && error.message === 'timeout' ? 'O servidor da lista demorou para responder.' : fallback);
@@ -53,10 +62,11 @@
       var rules = R();
       var live = rules.xtreamCategoryList(lists[0]), movies = rules.xtreamCategoryList(lists[1]), series = rules.xtreamCategoryList(lists[2]);
       if (!live.length && !movies.length && !series.length) throw new Error('O servidor não retornou categorias.');
-      // Semente para o Início (Novidades): 1ª categoria de filmes e de séries.
+      // Semente para o Início (Novidades): a categoria de lançamentos de filmes e de séries
+      // (ex.: "Lançamentos", "Novidades", "Recentes"); sem ela, a 1ª categoria.
       var seeds = [];
-      if (movies.length) seeds.push(Catalog.loadCategory(xt, 'movies', movies[0], SEED_LIMIT));
-      if (series.length) seeds.push(Catalog.loadCategory(xt, 'series', series[0], SEED_LIMIT));
+      if (movies.length) seeds.push(Catalog.loadCategory(xt, 'movies', newsCategory(movies), SEED_LIMIT));
+      if (series.length) seeds.push(Catalog.loadCategory(xt, 'series', newsCategory(series), SEED_LIMIT));
       return Promise.all(seeds).then(function (loaded) {
         var items = [];
         for (var i = 0; i < loaded.length; i++) items = items.concat(loaded[i].items);
@@ -71,6 +81,7 @@
   var ACTIONS = { live: 'get_live_streams', movies: 'get_vod_streams', series: 'get_series' };
 
   var Catalog = EP.CatalogService = {
+    newsCategory: newsCategory,
     load: function (playlist) {
       if (!playlist || !playlist.credentials) return Promise.reject(new Error('A lista vinculada ainda não possui uma fonte compatível.'));
       if (playlist.sourceType !== 'xtream') {

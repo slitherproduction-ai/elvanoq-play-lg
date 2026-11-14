@@ -1,3 +1,7 @@
+# 1.1.9 — 2026-11-14
+
+- **Novidades para você com os lançamentos de verdade:** nas listas Xtream, a semente do Início passa a ser a categoria do servidor com nome de lançamentos (ex.: "Lançamentos", "Novidades", "Recentes", "Adicionados"; categorias adultas ficam de fora). Sem uma, usa a primeira categoria não adulta. A fileira usa só essa semente e não mistura os títulos salvos (Minha Lista e Continuar assistindo). Mesmo ajuste da Roku 1.1.7 e da Samsung MSX.
+
 # 1.1.6 — 2026-11-11
 
 - **Lista atualizada com o app aberto** (Android 2.17.39): a TV deixa o app em segundo plano por dias. Ao voltar para o app (5 s depois), a cada 15 min e ao fechar o player, um catálogo carregado há mais de 6 h é recarregado em segundo plano, sem tela de espera e sem mexer no foco da seção aberta; as seções pegam a lista nova na próxima vez que forem abertas e as categorias já vistas são baixadas de novo. Nunca durante um vídeo. Se falhar, fica a lista atual e a próxima tentativa só depois de mais 6 h.
