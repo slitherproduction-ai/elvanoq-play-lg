@@ -276,13 +276,13 @@ video.sg-video::-webkit-media-controls { display: none !important; }
 .lock-row .icon svg { width: 100%; height: 100%; }
 
 /* Ativação 1.1.1 (padrão do login Android 2.17.23). Animação só em transform. */
-.act-code { position: absolute; box-sizing: border-box; border-radius: 26px; background: rgba(14, 21, 36, 0.92); }
+.act-code { position: absolute; box-sizing: border-box; border-radius: 20px; background: rgba(14, 21, 36, 0.92); }
 /* Redesign: sem foco = superfície escura e texto claro; foco = pílula clara com texto escuro. */
-.act-primary { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 18px; border-radius: 24px; background: rgba(14, 21, 36, 0.92); color: #f4f8ff; font-size: 29px; font-weight: 700; }
-.act-primary .icon { width: 33px; height: 33px; flex: none; }
+.act-primary { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 16px; border-radius: 16px; background: rgba(14, 21, 36, 0.92); color: #f4f8ff; font-size: 24px; font-weight: 700; }
+.act-primary .icon { width: 28px; height: 28px; flex: none; }
 .act-primary.focused { background: #f4f8ff; color: #070b14; }
-.act-short { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 15px; border-radius: 21px; background: rgba(14, 21, 36, 0.92); color: #f4f8ff; font-size: 24px; font-weight: 600; }
-.act-short .icon { width: 28px; height: 28px; flex: none; color: #00d7ff; }
+.act-short { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 12px; border-radius: 14px; background: rgba(14, 21, 36, 0.92); color: #c9d2e3; font-size: 20px; font-weight: 600; }
+.act-short .icon { width: 24px; height: 24px; flex: none; color: #00d7ff; }
 .act-short.focused { background: #f4f8ff; color: #070b14; }
 .act-short.focused .icon { color: #070b14; }
 /* Bem-vindo de volta: barra de 1,2 s (só transform). */

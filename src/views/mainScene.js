@@ -15,40 +15,39 @@
   function MainScene(stage) {
     var self = this;
     this.stage = stage;
-    // 1.1.1: mesmo padrão da tela de login do Android 2.17.23 (activation-
-    // chooser): logo com slogan, relógio, 3 passos, código em destaque, botão
-    // branco "Entrar com código do servidor", atalhos, QR e rodapé com status.
     var root = this.activation = S.group(stage, { className: 'layer' });
     S.rect(root, { x: 0, y: 0, w: 1920, h: 1080, color: '0x070B14FF' });
     S.poster(root, { x: 0, y: 0, w: 1920, h: 1080, uri: 'images/elvanoq-login-tv-backdrop.jpg' });
     S.el(root, { x: 0, y: 0, w: 1920, h: 1080, css: 'background:linear-gradient(90deg,rgba(7,11,20,0.96) 0%,rgba(7,11,20,0.88) 38%,rgba(7,11,20,0.35) 70%,rgba(7,11,20,0) 100%)' });
-    S.poster(root, { x: 112, y: 72, w: 400, h: 97, uri: 'images/elvanoq-logo-tagline.png', mode: 'fit' }).style.backgroundPosition = 'left center';
-    this.clockTime = S.label(root, { x: 1444, y: 72, w: 364, h: 54, size: 46, weight: 600, align: 'right' });
-    this.clockDate = S.label(root, { x: 1444, y: 128, w: 364, h: 30, size: 22, align: 'right', color: '0x8894A8FF' });
-    S.label(root, { x: 112, y: 240, w: 900, h: 26, text: 'ACESSO SEGURO', size: 19, weight: 700, color: '0x00D7FFFF', css: 'letter-spacing:0.17em' });
-    this.headline = S.label(root, { x: 112, y: 270, w: 1000, h: 80, text: 'Ative sua TV', size: 66, weight: 700, css: 'letter-spacing:-0.026em' });
-    this.description = S.label(root, { x: 112, y: 350, w: 1000, h: 38, size: 27, color: '0xB8C4D6FF', text: 'Vincule esta TV ao Portal ELVANOQ Play em três passos.' });
-    var steps = ['Acesse elvanoqplay.app ou aponte a câmera para o QR code', 'Informe o código desta TV', 'A TV ativa sozinha em alguns segundos'];
+    // Redesign (canvas "Proposta visual Login e Ativação", tela 3): coluna
+    // à esquerda com passos, código e ações; QR num cartão à direita.
+    S.poster(root, { x: 96, y: 64, w: 400, h: 80, uri: 'images/elvanoq-logo-tagline.png', mode: 'fit' }).style.backgroundPosition = 'left center';
+    this.clockTime = S.label(root, { x: 1460, y: 64, w: 364, h: 54, size: 44, weight: 600, align: 'right' });
+    this.clockDate = S.label(root, { x: 1460, y: 120, w: 364, h: 28, size: 20, align: 'right', color: '0x9AA6BDFF' });
+    S.label(root, { x: 96, y: 246, w: 900, h: 26, text: 'ACESSO SEGURO', size: 18, weight: 700, color: '0x00D7FFFF', css: 'letter-spacing:0.11em' });
+    this.headline = S.label(root, { x: 96, y: 282, w: 1000, h: 84, text: 'Ative sua TV', size: 72, weight: 700, css: 'letter-spacing:-0.021em' });
+    this.description = S.label(root, { x: 96, y: 374, w: 1000, h: 36, size: 24, color: '0xC9D2E3FF', text: 'Vincule esta TV ao Portal ELVANOQ Play em três passos.' });
+    var steps = ['Aponte a câmera para o QR ou acesse elvanoqplay.app', 'Informe o código desta TV', 'A TV ativa sozinha em alguns segundos'];
     for (var i = 0; i < 3; i++) {
-      S.el(root, { x: 112, y: 408 + i * 58, w: 45, h: 45, text: String(i + 1), css: 'border-radius:23px;background:#1a2438;color:#00d7ff;font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center' });
-      S.label(root, { x: 175, y: 408 + i * 58, w: 900, h: 45, text: steps[i], size: 25, valign: 'center', color: '0xE4EAF4FF' });
+      S.el(root, { x: 96, y: 446 + i * 66, w: 44, h: 44, text: String(i + 1), css: 'border-radius:22px;background:#1a2438;color:#00d7ff;font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center' });
+      S.label(root, { x: 160, y: 446 + i * 66, w: 900, h: 44, text: steps[i], size: 24, valign: 'center', color: '0xF4F8FFFF' });
     }
-    S.label(root, { x: 112, y: 592, w: 700, h: 26, text: 'CÓDIGO DESTA TV', size: 19, weight: 700, color: '0x8E9AAEFF', css: 'letter-spacing:0.14em' });
-    S.el(root, { x: 112, y: 630, w: 930, h: 130, className: 'act-code' });
-    S.label(root, { x: 151, y: 656, w: 400, h: 24, text: 'CÓDIGO', size: 18, weight: 700, color: '0x8E9AAEFF', css: 'letter-spacing:0.1em' });
-    // Código numa linha só e menor (redesign).
-    this.deviceCode = S.label(root, { x: 151, y: 682, w: 860, h: 54, size: 34, weight: 700, css: 'white-space:nowrap' });
+    S.el(root, { x: 96, y: 672, w: 760, h: 114, className: 'act-code' });
+    S.label(root, { x: 126, y: 690, w: 700, h: 24, text: 'CÓDIGO DESTA TV', size: 16, weight: 700, color: '0x9AA6BDFF', css: 'letter-spacing:0.125em' });
+    // Código numa linha só (redesign).
+    this.deviceCode = S.label(root, { x: 126, y: 720, w: 700, h: 48, size: 36, weight: 700, css: 'white-space:nowrap;letter-spacing:0.03em' });
     this.qrGroup = S.group(root, { className: 'layer', visible: false });
-    S.el(this.qrGroup, { x: 1122, y: 574, w: 294, h: 294, css: 'background:#fff;border-radius:24px' });
-    // 33 módulos x 8 px = 264 px, centrado no cartão branco de 294 px.
-    this.qrHolder = S.el(this.qrGroup, { x: 1137, y: 589, w: 264, h: 264, css: 'display:flex;align-items:center;justify-content:center' });
-    S.label(this.qrGroup, { x: 1072, y: 884, w: 394, h: 30, text: 'Aponte a câmera do celular', size: 21, weight: 600, align: 'center', color: '0xB8C4D6FF' });
-    S.label(this.qrGroup, { x: 1072, y: 920, w: 394, h: 34, text: 'elvanoqplay.app', size: 26, weight: 700, align: 'center', color: '0x00D7FFFF' });
-    // Ações: botão principal e dois atalhos (foco por ↑/↓/←/→).
-    this.button = S.el(root, { x: 112, y: 780, w: 930, h: 93, className: 'act-primary' });
+    S.el(this.qrGroup, { x: 1300, y: 330, w: 460, h: 480, css: 'border-radius:28px;background:#0e1524' });
+    S.el(this.qrGroup, { x: 1380, y: 370, w: 300, h: 300, css: 'background:#fff;border-radius:18px' });
+    // 33 módulos x 8 px = 264 px, centrado no quadro branco de 300 px.
+    this.qrHolder = S.el(this.qrGroup, { x: 1398, y: 388, w: 264, h: 264, css: 'display:flex;align-items:center;justify-content:center' });
+    S.label(this.qrGroup, { x: 1300, y: 690, w: 460, h: 30, text: 'Aponte a câmera do celular', size: 20, align: 'center', color: '0xC9D2E3FF' });
+    S.label(this.qrGroup, { x: 1300, y: 736, w: 460, h: 36, text: 'elvanoqplay.app', size: 26, weight: 700, align: 'center', color: '0x00D7FFFF' });
+    // Ações: botão principal e dois atalhos menores (foco por ↑/↓/←/→).
+    this.button = S.el(root, { x: 96, y: 808, w: 760, h: 76, className: 'act-primary' });
     this.shortcuts = [
-      S.el(root, { x: 112, y: 885, w: 459, h: 81, className: 'act-short' }),
-      S.el(root, { x: 583, y: 885, w: 459, h: 81, className: 'act-short' })
+      S.el(root, { x: 96, y: 900, w: 372, h: 60, className: 'act-short' }),
+      S.el(root, { x: 484, y: 900, w: 372, h: 60, className: 'act-short' })
     ];
     S.setButton(this.shortcuts[0], 'refresh', 'Verificar ativação');
     S.setButton(this.shortcuts[1], 'info', 'Como ativar');
@@ -57,9 +56,9 @@
     for (var k = 0; k < this.actions.length; k++) {
       (function (index) { self.actions[index].addEventListener('click', function () { self.actionIndex = index; self.updateActionFocus(); self.runAction(); }); }(k));
     }
-    this.statusDot = S.el(root, { x: 112, y: 1007, w: 14, h: 14, className: 'status-dot pulse' });
-    this.status = S.label(root, { x: 140, y: 994, w: 1000, h: 40, text: 'Preparando ativação…', size: 22, valign: 'center', color: '0xB8C4D6FF' });
-    S.label(root, { x: 1208, y: 996, w: 600, h: 36, text: 'ELVANOQ · LG webOS · Versão ' + EP.VERSION, size: 19, align: 'right', valign: 'center', color: '0x8E9AAEFF' });
+    this.statusDot = S.el(root, { x: 96, y: 1006, w: 12, h: 12, className: 'status-dot pulse' });
+    this.status = S.label(root, { x: 120, y: 992, w: 1000, h: 40, text: 'Preparando ativação…', size: 20, valign: 'center', color: '0xC9D2E3FF' });
+    S.label(root, { x: 1224, y: 994, w: 600, h: 36, text: 'ELVANOQ · LG webOS · Versão ' + EP.VERSION, size: 18, align: 'right', valign: 'center', color: '0x7F8BA3FF' });
     this.updateActionFocus();
     // Aviso de teste encerrado (Roku 1.0.1): sem pagamento nem link externo.
     var ov = this.expiredOverlay = S.group(root, { className: 'layer', visible: false });
