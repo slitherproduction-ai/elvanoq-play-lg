@@ -12,4 +12,12 @@ assert.equal(pick(cats(['Adultos +18 Lançamentos', 'Comédia', 'Novidades'])).n
 assert.equal(pick(cats(['XXX Lancamentos', 'Comédia'])).name, 'Comédia');
 assert.equal(pick(cats(['XXX'])).name, 'XXX');
 assert.equal(pick(cats(['Ação', 'Comédia'])).name, 'Ação');
+const items = [
+  { type: 'movies', category: 'Ação', title: 'Velho' },
+  { type: 'movies', category: 'Lançamentos 2026', title: 'Novo' },
+  { type: 'series', category: 'Séries | Novidades', title: 'Série nova' },
+  { type: 'live', category: 'Lançamentos', title: 'Canal' }
+];
+assert.deepEqual(EP.CatalogService.newsItems(items).map(i => i.title), ['Novo', 'Série nova']);
+assert.deepEqual(EP.CatalogService.newsItems([{ type: 'movies', category: 'Ação', title: 'A' }]), []);
 console.log('news-category ok');

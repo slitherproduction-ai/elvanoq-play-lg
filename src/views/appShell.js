@@ -164,7 +164,10 @@
     if (index === HOME) {
       base.items = this.filterVisible(this.homeItems());
       // Novidades: na lista Xtream, só a semente (lançamentos), sem os salvos.
+      // Na M3U (inclusive a lista do Portal que voltou para o M3U), o grupo de
+      // lançamentos; sem ele, a lista toda pela data de inclusão.
       if (this.lazy) base.recent = this.filterVisible(this.catalog || []);
+      else base.recent = this.filterVisible(EP.CatalogService.newsItems(this.catalog || []));
     }
     if (index === SETTINGS) {
       base.items = this.pool().slice(0, 3000); base.categories = this.allCategoryNames();
