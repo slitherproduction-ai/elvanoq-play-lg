@@ -6,14 +6,14 @@
   var S = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
   var F = 'fill="currentColor"';
   var PATHS = {
-    home: '<path d="M3.5 11 12 4l8.5 7" ' + S + '/><path d="M6 9.5V20h4.5v-5.5h3V20H18V9.5" ' + S + '/>',
-    tv: '<rect x="3" y="6.5" width="18" height="12.5" rx="2.5" ' + S + '/><path d="M8.5 2.8 12 6.3l3.5-3.5M9 22h6" ' + S + '/>',
-    film: '<path d="M4 9h16v10.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19.5Z" ' + S + '/><path d="m3.6 9 15.6-4.2-.8-3L3.1 6Z" ' + S + '/><path d="m7.4 4.9 2.3 3M12.2 3.6l2.3 3M8 12.5h8" ' + S + '/>',
-    series: '<rect x="7" y="7" width="14" height="13" rx="2" ' + S + '/><path d="M4 16V5.5A1.5 1.5 0 0 1 5.5 4H16" ' + S + '/><path d="m12.5 10.6 4 2.9-4 2.9Z" ' + F + '/>',
-    search: '<circle cx="10.5" cy="10.5" r="6.5" ' + S + '/><path d="m15.5 15.5 5 5" ' + S + ' stroke-width="2.6"/>',
+    home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" ' + S + '/>',
+    tv: '<rect x="3" y="7" width="18" height="13" rx="2" ' + S + '/><path d="M8 3l4 4 4-4" ' + S + '/>',
+    film: '<rect x="3" y="4" width="18" height="16" rx="2" ' + S + '/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4" ' + S + '/>',
+    series: '<rect x="3" y="8" width="18" height="12" rx="2" ' + S + '/><path d="M6 5h12M9 2h6" ' + S + '/>',
+    search: '<circle cx="11" cy="11" r="7" ' + S + '/><path d="m20 20-4-4" ' + S + '/>',
     star: '<path d="m12 2.8 2.8 6 6.5.7-4.9 4.4 1.4 6.4L12 17l-5.8 3.3 1.4-6.4-4.9-4.4 6.5-.7Z" ' + F + '/>',
     starOutline: '<path d="m12 2.8 2.8 6 6.5.7-4.9 4.4 1.4 6.4L12 17l-5.8 3.3 1.4-6.4-4.9-4.4 6.5-.7Z" ' + S + '/>',
-    settings: '<path d="M12 8.6A3.4 3.4 0 1 0 12 15.4 3.4 3.4 0 1 0 12 8.6Z" ' + S + '/><path d="M19.4 13.5a7.7 7.7 0 0 0 0-3l2-1.6-2-3.4-2.4.9a7.6 7.6 0 0 0-2.6-1.5L14 2.4h-4l-.4 2.5A7.6 7.6 0 0 0 7 6.4l-2.4-.9-2 3.4 2 1.6a7.7 7.7 0 0 0 0 3l-2 1.6 2 3.4 2.4-.9a7.6 7.6 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a7.6 7.6 0 0 0 2.6-1.5l2.4.9 2-3.4Z" ' + S + '/>',
+    settings: '<circle cx="12" cy="12" r="3.2" ' + S + '/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" ' + S + '/>',
     play: '<path d="M7 4.5v15l12.5-7.5Z" ' + F + '/>',
     pause: '<path d="M7 4.5h3.5v15H7zM13.5 4.5H17v15h-3.5z" ' + F + '/>',
     plus: '<path d="M12 5v14M5 12h14" ' + S + ' stroke-width="2.6"/>',
@@ -34,7 +34,7 @@
     fwd10: '<path d="M20 5v5h-5" ' + S + '/><path d="M19.5 10A8 8 0 1 0 18 16.5" ' + S + '/><text x="11.7" y="15.2" font-size="7" font-weight="700" text-anchor="middle" ' + F + ' font-family="Inter,Arial">10</text>',
     audio: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z" ' + S + '/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" ' + S + '/>',
     subtitles: '<rect x="3" y="5" width="18" height="14" rx="2.5" ' + S + '/><path d="M7 12.5h4M13 12.5h4M7 15.5h7" ' + S + '/>',
-    heart: '<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.2 4.3 4.3 0 0 1 19.5 10C19.5 15.4 12 20 12 20Z" ' + S + '/>',
+    heart: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" ' + S + '/>',
     live: '<circle cx="12" cy="12" r="2.5" ' + F + '/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M5 5a10 10 0 0 0 0 14M19 5a10 10 0 0 1 0 14" ' + S + '/>'
   };
 
