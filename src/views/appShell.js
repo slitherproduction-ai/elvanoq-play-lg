@@ -589,7 +589,7 @@
     if (item.type === 'series' && !item.stream_url) { this.openCatalogItem(item); return; }
     if (!item.stream_url) return;
     this.clearEpisodeQueue();
-    this.startPlayback({ streamUrl: item.stream_url, id: item.id, title: EP.displayTitle(item.title), category: item.category, resumePosition: resume || 0, persistEnabled: true, skipIntroEnd: 0, nextEpisode: null, liveQueue: [], saved: savedRef(item) });
+    this.startPlayback({ streamUrl: item.stream_url, id: item.id, title: EP.displayTitle(item.title), category: item.category, resumePosition: resume || 0, persistEnabled: true, skipIntroEnd: 0, nextEpisode: null, liveQueue: [], saved: savedRef(item), cover: item.backdrop || item.logo || '' });
   };
 
   AppShell.prototype.playLiveItem = function (item, channels, index, adoptPreview) {
@@ -650,7 +650,8 @@
     this.startPlayback({
       streamUrl: ep.url, id: ep.id, title: ep.title, category: ep.category, resumePosition: LS.resumePositionFor(ep), persistEnabled: true,
       skipIntroEnd: ep.introEnd || 0, nextEpisode: queue[this.episodeQueueIndex + 1] || null, liveQueue: [],
-      saved: episodeRef(ep, this.detailView.item)
+      saved: episodeRef(ep, this.detailView.item),
+      cover: ep.image || (this.detailView.item && (this.detailView.item.backdrop || this.detailView.item.logo)) || ''
     });
   };
 

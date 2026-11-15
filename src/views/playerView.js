@@ -30,6 +30,15 @@
     video.setAttribute('playsinline', '');
     video.style.left = '0px'; video.style.top = '0px'; video.style.width = '1920px'; video.style.height = '1080px';
     root.appendChild(video);
+    // Abertura: até o primeiro quadro, a capa (já em cache da tela anterior)
+    // com véu, título e uma linha fina animada só com transform.
+    var cover = this.openingCover = S.group(root, { className: 'layer', visible: false });
+    this.openingArt = S.el(cover, { x: 0, y: 0, w: 1920, h: 1080, css: 'background:#070b14 center/cover no-repeat' });
+    S.rect(cover, { x: 0, y: 0, w: 1920, h: 1080, color: '0x040912A0' });
+    S.label(cover, { x: 96, y: 900, w: 1200, h: 28, text: 'ABRINDO', size: 18, weight: 700, color: '0x00D7FFFF', css: 'letter-spacing:0.14em' });
+    this.openingTitle = S.label(cover, { x: 96, y: 934, w: 1600, h: 60, size: 44, weight: 700, css: 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis' });
+    S.el(cover, { x: 0, y: 1074, w: 1920, h: 6, css: 'background:rgba(244,248,255,0.12);overflow:hidden', html: '<div class="opening-bar"></div>' });
+
     // OSD com a geometria do PlayerView.xml do Roku 0.1.88.
     var osd = this.osd = S.group(root, { className: 'layer' });
     S.rect(osd, { x: 0, y: 0, w: 1920, h: 1080, color: '0x070B1433' });
@@ -38,7 +47,8 @@
     this.backLabel = S.el(osd, { x: 0, y: 0, w: 1, h: 1, visible: false });
     this.logo = S.el(osd, { x: 64, y: 664, w: 108, h: 72, visible: false, css: 'border-radius:12px;background:#111b2d center/contain no-repeat' });
     this.hint = S.label(osd, { x: 64, y: 52, w: 1400, h: 34, text: 'OK: controles   •   Voltar: sair', size: 22, color: '0xC9D3E3FF' });
-    this.contentBadge = S.label(osd, { x: 1456, y: 52, w: 400, h: 34, text: 'ELVANOQ PLAY', size: 18, weight: 700, align: 'right', color: '0x00D7FFFF', css: 'letter-spacing:0.14em' });
+    // Relógio e, em filmes e episódios, "termina às" (redesign de TV).
+    this.contentBadge = S.label(osd, { x: 1056, y: 52, w: 800, h: 34, text: '', size: 22, weight: 600, align: 'right', color: '0xF4F8FFFF' });
     this.nowPlaying = S.label(osd, { x: 64, y: 752, w: 800, h: 26, text: 'REPRODUZINDO', size: 18, weight: 700, color: '0x00D7FFFF', css: 'letter-spacing:0.14em' });
     this.title = S.label(osd, { x: 64, y: 784, w: 1500, h: 56, size: 42, weight: 700, css: 'letter-spacing:-0.015em' });
     this.liveGuideLabel = S.label(osd, { x: 64, y: 846, w: 1500, h: 32, size: 22, weight: 500, color: '0xD6DEEBFF', visible: false });
@@ -110,11 +120,40 @@
       if (self.pendingSeek > 0) { try { v.currentTime = self.pendingSeek; } catch (_) {} self.pendingSeek = 0; }
     });
     on('ended', function () { self.onFinished(); });
-    on('error', function () { self.onLoadError(self.loadToken); });
+    on('error', function () { self.hideOpeningCover(); self.onLoadError(self.loadToken); });
+  };
+
+  PlayerView.prototype.showOpeningCover = function (content) {
+    var art = !this.isLive() && !this.isCatchup() && content && content.cover;
+    if (!art) { this.hideOpeningCover(); return; }
+    this.openingArt.style.backgroundImage = 'url("' + EP.sizedImage(art, 'backdrop').replace(/"/g, '%22') + '")';
+    this.openingTitle.textContent = content.title || '';
+    S.show(this.openingCover, true);
+    S.show(this.osd, false);
+  };
+
+  PlayerView.prototype.hideOpeningCover = function () {
+    if (!this.openingCover || !S.isVisible(this.openingCover)) return;
+    S.show(this.openingCover, false);
+    this.openingArt.style.backgroundImage = 'none';
+  };
+
+  function twoDigits(n) { return (n < 10 ? '0' : '') + n; }
+  function clockOf(date) { return twoDigits(date.getHours()) + ':' + twoDigits(date.getMinutes()); }
+
+  PlayerView.prototype.updateClockBadge = function () {
+    if (!this.contentBadge) return;
+    var now = new Date(), text = clockOf(now), v = this.video;
+    if (this.hasTimeline() && v.currentTime >= 0) {
+      var rate = v.playbackRate || 1, remaining = Math.max(0, v.duration - v.currentTime) / rate;
+      if (remaining > 0) text += '   •   termina às ' + clockOf(new Date(now.getTime() + remaining * 1000));
+    }
+    this.contentBadge.textContent = text;
   };
 
   PlayerView.prototype.onPlaying = function () {
     var v = this.video;
+    this.hideOpeningCover();
     if (this.loadToken) this.loadToken.started = true;
     this.clearOpenTimeout();
     this.recordOpen(true);
@@ -208,6 +247,7 @@
     if (this.isLive()) this.renderLiveGuide(); else S.show(this.liveGuideLabel, false);
     this.updateTimeline();
     this.showOsd();
+    this.showOpeningCover(content);
   };
 
   PlayerView.prototype.load = function (url) {
@@ -281,6 +321,7 @@
 
   /* Uma falha por carregamento, venha do <video> ou do <source>. */
   PlayerView.prototype.onLoadError = function (token) {
+    this.hideOpeningCover();
     if (!token || token !== this.loadToken || token.failed) return;
     token.failed = true;
     this.onError();
@@ -518,7 +559,10 @@
   };
 
   PlayerView.prototype.showOsd = function () {
+    // Com a capa da abertura na tela, os controles esperam o primeiro quadro.
+    if (this.openingCover && S.isVisible(this.openingCover)) return;
     this.osdVisible = true;
+    this.updateClockBadge();
     S.show(this.osd, true);
     if (this.seekFocus && !this.hasTimeline()) this.setTimelineFocus(false);
     this.refreshControlsHint();
@@ -672,6 +716,7 @@
     this.timelineProgress.style.width = (pct * 100).toFixed(2) + '%';
     this.timelineKnob.style.left = Math.round(52 + 1792 * pct) + 'px';
     this.timeLabel.textContent = EP.formatTime(position) + ' / ' + EP.formatTime(v.duration);
+    if (this.osdVisible) this.updateClockBadge();
   };
 
   PlayerView.prototype.persistProgress = function (completed) {
@@ -704,6 +749,7 @@
     this.osdTimer.stop();
     this.nextEpisodeTimer.stop();
     this.awaitingNextEpisode = false;
+    this.hideOpeningCover();
     this.stopVideo();
   };
 

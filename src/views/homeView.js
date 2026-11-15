@@ -1,22 +1,27 @@
 /* Home em formato hub — ELVANOQ Play Roku 0.1.88 (HomeView):
  *   1. destaque largo (0–640) com rótulo, título, metadados, sinopse,
  *      "Assistir agora" / "Minha Lista" e paginação; relógio fixo no canto;
- *   2. blocos: TV ao Vivo, Filmes, Séries, Busca, Minha Lista, Ajustes;
+ *   2. menu no topo com ícones (redesign de TV — igual no Android, Roku e
+ *      MSX): Início, TV ao Vivo, Filmes, Séries, Minha Lista e Ajustes (só
+ *      ícone), sem atalho de Busca; relógio à direita;
  *   3. duas fileiras: Novidades para você e Continuar assistindo (se houver).
- * Ao focar as fileiras a página sobe 328 / 712 px, como no Roku. Acabamento do
+ * Parar sobre um pôster de Novidades leva o título ao destaque.
+ * Ao focar as fileiras a página sobe 126 / 510 px. Acabamento do
  * Android: arte com sombras, luz ambiente, transição do destaque, pôsteres
  * arredondados com foco ciano e ampliação.
  */
 (function (EP) {
   'use strict';
   var S = EP.Stage, LS = EP.LocalState, R = function () { return EP.PlaylistRules; };
+  // key = seção do AppShell (0 = Início, que é esta tela).
   var TILES = [
-    { key: 1, title: 'TV ao Vivo', icon: 'tv' }, { key: 2, title: 'Filmes', icon: 'film' }, { key: 3, title: 'Séries', icon: 'series' },
-    { key: 4, title: 'Busca', icon: 'search' }, { key: 5, title: 'Minha Lista', icon: 'star' }, { key: 6, title: 'Ajustes', icon: 'settings' }
+    { key: 0, title: 'Início', icon: 'home', w: 168 }, { key: 1, title: 'TV ao Vivo', icon: 'tv', w: 220 },
+    { key: 2, title: 'Filmes', icon: 'film', w: 164 }, { key: 3, title: 'Séries', icon: 'series', w: 164 },
+    { key: 5, title: 'Minha Lista', icon: 'bookmark', w: 226 }, { key: 6, title: '', icon: 'settings', w: 56 }
   ];
-  var TILE_X = 64, TILE_W = 280, TILE_GAP = 22, TILE_Y = 662, TILE_H = 150;
-  var POSTER_W = 196, POSTER_H = 294, POSTER_GAP = 24, RAIL_Y = 892, RAIL_VISIBLE = 8, RAIL_LIMIT = 30;
-  var SCROLL = 328;
+  var NAV_X = 310, NAV_Y = 51, SETTINGS_X = 1584;
+  var POSTER_W = 196, POSTER_H = 294, POSTER_GAP = 24, RAIL_Y = 690, RAIL_VISIBLE = 8, RAIL_LIMIT = 30;
+  var SCROLL = 126, HERO_FOCUS_MS = 300;
   var GLOWS = ['rgba(126, 48, 205, 0.62)', 'rgba(20, 110, 255, 0.55)', 'rgba(0, 170, 200, 0.45)'];
 
   function HomeView(parent) {
@@ -47,12 +52,15 @@
 
     S.el(scroller, { x: 0, y: 639, w: 1920, h: 2, className: 'divider' });
 
-    // Blocos
+    // Menu do topo (pílulas com ícone; Ajustes só ícone, à direita).
     this.tiles = [];
+    var navX = NAV_X;
     for (var i = 0; i < TILES.length; i++) {
-      var tile = S.el(scroller, { x: TILE_X + i * (TILE_W + TILE_GAP), y: TILE_Y, w: TILE_W, h: TILE_H, className: 'hub-tile' });
+      var x = TILES[i].title ? navX : SETTINGS_X;
+      var tile = S.el(hero, { x: x, y: NAV_Y, w: TILES[i].w, h: 56, className: 'nav-pill' + (TILES[i].key === 0 ? ' active' : '') + (TILES[i].title ? '' : ' icon-only') });
       tile.appendChild(EP.icon(TILES[i].icon));
-      var label = document.createElement('div'); label.className = 'hub-label'; label.textContent = TILES[i].title; tile.appendChild(label);
+      if (TILES[i].title) { var label = document.createElement('span'); label.className = 'nav-label'; label.textContent = TILES[i].title; tile.appendChild(label); }
+      navX += TILES[i].w + 8;
       (function (index) {
         tile.addEventListener('click', function () { self.area = 'tiles'; self.tileIndex = index; self.updateFocus(); self.handleKey('OK'); });
       }(i));
@@ -63,22 +71,23 @@
     this.rails = [];
     for (var row = 0; row < 2; row++) {
       var group = S.group(scroller, { x: 0, y: row * 384 });
-      var title = S.label(group, { x: 64, y: 842, w: 900, h: 40, text: row ? 'Continuar assistindo' : 'Novidades para você', size: 26, weight: 600 });
-      var hint = S.label(group, { x: 1056, y: 846, w: 800, h: 32, text: row ? 'Retome de onde parou' : 'Filmes e séries adicionados recentemente', size: 20, align: 'right', color: '0x8894A8FF' });
+      var title = S.label(group, { x: 64, y: 640, w: 900, h: 40, text: row ? 'Continuar assistindo' : 'Novidades para você', size: 26, weight: 600 });
+      var hint = S.label(group, { x: 1056, y: 644, w: 800, h: 32, text: row ? 'Retome de onde parou' : 'Filmes e séries adicionados recentemente', size: 20, align: 'right', color: '0x8894A8FF' });
       var viewport = S.el(group, { x: 44, y: RAIL_Y - 20, w: 1832, h: POSTER_H + 40, css: 'overflow:hidden' });
       var strip = S.el(viewport, { x: 20, y: 20, w: 8000, h: POSTER_H, className: 'scroller' });
       this.rails.push({ group: group, title: title, hint: hint, strip: strip, items: [], posters: [], index: 0, offset: 0 });
     }
     this.railRow = 0;
-    this.emptyState = S.label(scroller, { x: 64, y: 900, w: 1500, h: 52, size: 24, color: '0x8894A8FF', visible: false });
+    this.emptyState = S.label(scroller, { x: 64, y: 698, w: 1500, h: 52, size: 24, color: '0x8894A8FF', visible: false });
 
-    // Relógio fixo (não rola com a página)
-    this.clock = S.label(root, { x: 1506, y: 44, w: 350, h: 50, size: 36, weight: 600, align: 'right' });
-    this.clockDate = S.label(root, { x: 1506, y: 94, w: 350, h: 32, size: 20, align: 'right', color: '0xD6DEEBFF' });
+    // Relógio no fim do menu (rola com o destaque, como o menu).
+    this.clock = S.label(hero, { x: 1656, y: NAV_Y, w: 200, h: 56, size: 22, weight: 500, align: 'right', valign: 'center', color: '0x9AA6BDFF' });
+    this.clockDate = null;
     this.updateClock();
     this.clockTimer = setInterval(function () { self.updateClock(); }, 15000);
 
     this.area = 'tiles'; this.tileIndex = 0; this.heroAction = 0;
+    this.pinned = null; this.heroFocusTimer = null;
     this.slides = []; this.slideIndex = 0; this.isActive = true; this.hasFocus = true;
     this.heroTimer = new EP.Timer(8, true, function () { self.nextSlide(1); });
     this.watchButton.addEventListener('click', function () { self.area = 'hero'; self.heroAction = 0; self.handleKey('OK'); });
@@ -93,7 +102,6 @@
   HomeView.prototype.updateClock = function () {
     var c = EP.clockText();
     this.clock.textContent = c.time;
-    this.clockDate.textContent = c.date;
   };
 
   HomeView.prototype.renderGlow = function (index) {
@@ -124,6 +132,7 @@
       if (items[i].type === 'movies' || items[i].type === 'series') vod.push(items[i]);
     }
     this.byId = byId;
+    this.pinned = null;
     this.buildSlides(vod.length ? vod : items);
     this.buildRail(vod, byId);
     if (this.isActive && this.slides.length > 1) this.heroTimer.start();
@@ -167,14 +176,14 @@
 
   HomeView.prototype.renderDots = function () {
     this.dots.innerHTML = '';
-    if (this.slides.length < 2) return;
+    if (this.slides.length < 2 || this.pinned) return;
     for (var i = 0; i < this.slides.length; i++) {
       S.el(this.dots, { x: i * 24, y: 0, w: 14, h: 14, css: 'border-radius:3px;background:' + (i === this.slideIndex ? 'var(--accent)' : 'rgba(136,148,168,0.45)') });
     }
   };
 
   HomeView.prototype.renderSlide = function (animate) {
-    var slide = this.slides[this.slideIndex];
+    var slide = this.pinned || this.slides[this.slideIndex];
     if (!slide) return;
     var self = this, item = slide.item;
     this.heroItem = item;
@@ -233,7 +242,7 @@
   };
 
   HomeView.prototype.nextSlide = function (delta) {
-    if (!this.isActive || this.slides.length < 2) return;
+    if (!this.isActive || this.slides.length < 2 || this.pinned) return;
     if (this.hasFocus && this.area === 'hero') return; // pausa com foco nos botões
     this.slideIndex = (this.slideIndex + delta + this.slides.length) % this.slides.length;
     this.renderSlide(true);
@@ -298,7 +307,21 @@
     this.isActive = active;
     if (!active) this.resumeToken = null;
     if (active) { this.updateClock(); if (this.catalogItems) this.buildRail(this.vodOnly(), this.byId || {}); }
-    if (active && this.slides.length > 1) this.heroTimer.start(); else this.heroTimer.stop();
+    if (active && this.slides.length > 1 && !this.pinned) this.heroTimer.start(); else this.heroTimer.stop();
+  };
+
+  /* Parar sobre um pôster de Novidades leva o título ao destaque (300 ms
+   * depois de parar: rolar rápido não busca metadados a cada tecla). */
+  HomeView.prototype.scheduleHeroFocus = function (item) {
+    var self = this;
+    if (this.heroFocusTimer) clearTimeout(this.heroFocusTimer);
+    this.heroFocusTimer = setTimeout(function () {
+      self.heroFocusTimer = null;
+      if (!item || !self.isActive || (self.heroItem && self.heroItem.id === item.id)) return;
+      self.pinned = { label: item.type === 'series' ? 'SÉRIE' : 'FILME', item: item };
+      self.heroTimer.stop();
+      self.renderSlide(true);
+    }, HERO_FOCUS_MS);
   };
 
   HomeView.prototype.vodOnly = function () {
@@ -334,7 +357,8 @@
     if (this.area === 'hero') {
       if (key === 'left' && this.heroAction > 0) { this.heroAction--; this.updateFocus(); return true; }
       if (key === 'right' && this.heroAction < 1) { this.heroAction++; this.updateFocus(); return true; }
-      if (key === 'down') { this.area = 'tiles'; this.updateFocus(); return true; }
+      if (key === 'up') { this.area = 'tiles'; this.updateFocus(); return true; }
+      if (key === 'down' && this.rails[0].items.length) { this.area = 'rail'; this.railRow = 0; this.updateFocus(); return true; }
       if (key === 'OK' && this.heroItem) {
         if (this.heroAction === 0) {
           if (this.heroItem.type === 'series') this.events.emit('selectedItem', this.heroItem);
@@ -347,17 +371,21 @@
     if (this.area === 'tiles') {
       if (key === 'left' && this.tileIndex > 0) { this.tileIndex--; this.updateFocus(); return true; }
       if (key === 'right' && this.tileIndex < this.tiles.length - 1) { this.tileIndex++; this.updateFocus(); return true; }
-      if (key === 'up' && this.heroItem) { this.area = 'hero'; this.heroAction = 0; this.updateFocus(); return true; }
+      if (key === 'down' && this.heroItem) { this.area = 'hero'; this.heroAction = 0; this.updateFocus(); return true; }
       if (key === 'down' && this.rails[0].items.length) { this.area = 'rail'; this.railRow = 0; this.updateFocus(); return true; }
-      if (key === 'OK') { this.events.emit('navigate', TILES[this.tileIndex].key); return true; }
+      if (key === 'OK') { if (TILES[this.tileIndex].key) this.events.emit('navigate', TILES[this.tileIndex].key); return true; }
       return true;
     }
     // Fileiras
     var rail = this.rails[this.railRow];
-    if (key === 'left' && rail.index > 0) { rail.index--; this.updateFocus(); return true; }
-    if (key === 'right' && rail.index < rail.items.length - 1) { rail.index++; this.updateFocus(); return true; }
+    if (key === 'left' && rail.index > 0) { rail.index--; this.updateFocus(); if (this.railRow === 0) this.scheduleHeroFocus(rail.items[rail.index].item); return true; }
+    if (key === 'right' && rail.index < rail.items.length - 1) { rail.index++; this.updateFocus(); if (this.railRow === 0) this.scheduleHeroFocus(rail.items[rail.index].item); return true; }
     if (key === 'down' && this.railRow === 0 && this.rails[1].items.length) { this.changeRail(1); return true; }
-    if (key === 'up') { if (this.railRow === 1) this.changeRail(0); else { this.area = 'tiles'; this.updateFocus(); } return true; }
+    if (key === 'up') {
+      if (this.railRow === 1) this.changeRail(0);
+      else { this.area = this.heroItem ? 'hero' : 'tiles'; this.heroAction = 0; this.updateFocus(); }
+      return true;
+    }
     if (key === 'OK' && rail.items[rail.index]) { this.openRailEntry(rail.items[rail.index]); return true; }
     return true;
   };
@@ -388,7 +416,7 @@
     });
   };
 
-  /* Voltar dentro da Home: retorna aos blocos antes de sair do app. */
+  /* Voltar dentro da Home: retorna ao menu antes de sair do app. */
   HomeView.prototype.handleBack = function () {
     if (this.area !== 'tiles') { this.area = 'tiles'; this.updateFocus(); return true; }
     return false;
