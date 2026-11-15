@@ -16,6 +16,34 @@
     return size ? url.replace(/(image\.tmdb\.org\/t\/p\/)[^\/]+\//, '$1' + size + '/') : url;
   };
 
+  /* Imagens com reserva (Android 2.17.68 / Roku 1.1.8): se o servidor de
+   * imagens do TMDB (image.tmdb.org) não responder, tenta o mesmo arquivo em
+   * media.themoviedb.org e depois as imagens seguintes. Só troca quando a
+   * anterior falha: quem carrega de primeira não baixa nada a mais. */
+  var TMDB_HOST = /^https?:\/\/image\.tmdb\.org\//i;
+  EP.imageCandidates = function (urls) {
+    var out = [];
+    for (var i = 0; i < urls.length; i++) {
+      var url = urls[i] ? String(urls[i]) : '';
+      if (!url) continue;
+      var pair = [url, TMDB_HOST.test(url) ? url.replace(TMDB_HOST, 'https://media.themoviedb.org/') : ''];
+      for (var j = 0; j < pair.length; j++) if (pair[j] && out.indexOf(pair[j]) < 0) out.push(pair[j]);
+    }
+    return out;
+  };
+  /* Chama done(url) com a primeira imagem que carregar, ou done('') se nenhuma. */
+  EP.firstLoadable = function (urls, done) {
+    var index = 0;
+    function next() {
+      if (index >= urls.length) { done(''); return; }
+      var url = urls[index++], img = new Image();
+      img.onload = function () { done(url); };
+      img.onerror = next;
+      img.src = url;
+    }
+    next();
+  };
+
   /* Tamanho conforme o uso e o aparelho (Android 2.17.45 / Roku 1.1.6):
    * [aparelho simples, padrão]. Simples = tela menor que Full HD ou até 1 GB
    * de memória informado pelo navegador. */
