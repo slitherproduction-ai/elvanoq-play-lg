@@ -2,6 +2,7 @@
 
 Redesign de TV aprovado (mesmo sistema visual do Android 2.17.61–2.17.63 e da Roku 1.1.8).
 
+- **Ativação e Bem-vindo de volta** (canvas "Proposta visual Login e Ativação", mesmo fundo de hoje): passos com número ciano sobre `#1a2438`; código numa linha só e menor (34 px), em cartão escuro sem borda ciano (também no aviso de teste encerrado); botão e atalhos em superfície escura, com o foco em pílula clara e texto escuro. Na primeira abertura com lista salva, "Bem-vindo de volta" com o nome da lista e uma barra de 1,2 s por cima da Início, que já carrega por baixo — entra sozinho, sem apertar nada.
 - **Ícones iguais em todas as versões:** Início, TV ao Vivo (TV com antena), Filmes, Séries, Minha Lista, Ajustes, busca, coração e legendas com os mesmos desenhos do canvas aprovado e do Android 2.17.66 (traço 2, viewBox 24).
 - **Menu com ícones na Início:** os seis blocos dão lugar a um menu no topo, ao lado da marca — Início, TV ao Vivo, Filmes, Séries e Minha Lista em pílulas com ícone, Ajustes só com ícone e o relógio à direita. Sem atalho de Busca (continua dentro de Filmes e Séries). Aba ativa com fundo elevado `#1a2438` e ícone ciano; foco em pílula clara. Ordem vertical: menu › destaque › Novidades › Continuar; Voltar leva ao menu antes de sair. As fileiras sobem para onde ficavam os blocos. Novo ícone `home` em `src/core/icons.js`.
 - **Destaque acompanha o pôster em foco:** parar 300 ms sobre um pôster de "Novidades para você" leva o título ao destaque (com os metadados sob demanda já usados); a rotação para até a lista ser recarregada.

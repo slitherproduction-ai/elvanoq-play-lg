@@ -276,10 +276,16 @@ video.sg-video::-webkit-media-controls { display: none !important; }
 .lock-row .icon svg { width: 100%; height: 100%; }
 
 /* Ativação 1.1.1 (padrão do login Android 2.17.23). Animação só em transform. */
-.act-code { position: absolute; box-sizing: border-box; border: 3px solid #00d7ff; border-radius: 26px; background: #0d1422; }
-.act-primary { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 18px; border-radius: 24px; background: #f4f8ff; color: #070b14; font-size: 29px; font-weight: 700; border: 3px solid transparent; transform-origin: left center; transition: transform 160ms var(--ease); }
+.act-code { position: absolute; box-sizing: border-box; border-radius: 26px; background: rgba(14, 21, 36, 0.92); }
+/* Redesign: sem foco = superfície escura e texto claro; foco = pílula clara com texto escuro. */
+.act-primary { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 18px; border-radius: 24px; background: rgba(14, 21, 36, 0.92); color: #f4f8ff; font-size: 29px; font-weight: 700; }
 .act-primary .icon { width: 33px; height: 33px; flex: none; }
-.act-primary.focused { border-color: #00d7ff; transform: scale(1.03); }
-.act-short { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 15px; border-radius: 21px; border: 2px solid rgba(190, 222, 255, 0.16); background: rgba(13, 20, 34, 0.72); color: #f4f8ff; font-size: 24px; font-weight: 600; transition: transform 160ms var(--ease); }
+.act-primary.focused { background: #f4f8ff; color: #070b14; }
+.act-short { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 15px; border-radius: 21px; background: rgba(14, 21, 36, 0.92); color: #f4f8ff; font-size: 24px; font-weight: 600; }
 .act-short .icon { width: 28px; height: 28px; flex: none; color: #00d7ff; }
-.act-short.focused { border-color: #00d7ff; background: rgba(255, 255, 255, 0.14); transform: scale(1.04); }
+.act-short.focused { background: #f4f8ff; color: #070b14; }
+.act-short.focused .icon { color: #070b14; }
+/* Bem-vindo de volta: barra de 1,2 s (só transform). */
+.welcome-bar { width: 100%; height: 100%; background: var(--accent); -webkit-transform-origin: left center; transform-origin: left center; -webkit-animation: welcome-fill 1.2s ease-out forwards; animation: welcome-fill 1.2s ease-out forwards; }
+@-webkit-keyframes welcome-fill { from { -webkit-transform: scaleX(0); } to { -webkit-transform: scaleX(1); } }
+@keyframes welcome-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }

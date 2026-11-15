@@ -30,13 +30,14 @@
     this.description = S.label(root, { x: 112, y: 350, w: 1000, h: 38, size: 27, color: '0xB8C4D6FF', text: 'Vincule esta TV ao Portal ELVANOQ Play em três passos.' });
     var steps = ['Acesse elvanoqplay.app ou aponte a câmera para o QR code', 'Informe o código desta TV', 'A TV ativa sozinha em alguns segundos'];
     for (var i = 0; i < 3; i++) {
-      S.el(root, { x: 112, y: 408 + i * 58, w: 45, h: 45, text: String(i + 1), css: 'border-radius:23px;background:#147dff;color:#fff;font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center' });
+      S.el(root, { x: 112, y: 408 + i * 58, w: 45, h: 45, text: String(i + 1), css: 'border-radius:23px;background:#1a2438;color:#00d7ff;font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center' });
       S.label(root, { x: 175, y: 408 + i * 58, w: 900, h: 45, text: steps[i], size: 25, valign: 'center', color: '0xE4EAF4FF' });
     }
     S.label(root, { x: 112, y: 592, w: 700, h: 26, text: 'CÓDIGO DESTA TV', size: 19, weight: 700, color: '0x8E9AAEFF', css: 'letter-spacing:0.14em' });
     S.el(root, { x: 112, y: 630, w: 930, h: 130, className: 'act-code' });
     S.label(root, { x: 151, y: 656, w: 400, h: 24, text: 'CÓDIGO', size: 18, weight: 700, color: '0x8E9AAEFF', css: 'letter-spacing:0.1em' });
-    this.deviceCode = S.label(root, { x: 151, y: 682, w: 860, h: 54, size: 42, weight: 700, css: 'letter-spacing:0.05em' });
+    // Código numa linha só e menor (redesign).
+    this.deviceCode = S.label(root, { x: 151, y: 682, w: 860, h: 54, size: 34, weight: 700, css: 'white-space:nowrap' });
     this.qrGroup = S.group(root, { className: 'layer', visible: false });
     S.el(this.qrGroup, { x: 1122, y: 574, w: 294, h: 294, css: 'background:#fff;border-radius:24px' });
     // 33 módulos x 8 px = 264 px, centrado no cartão branco de 294 px.
@@ -68,8 +69,8 @@
     S.label(ov, { x: 300, y: 330, w: 1320, h: 60, text: 'Seu teste gratuito terminou', size: 44, weight: 700, align: 'center' });
     S.label(ov, { x: 420, y: 400, w: 1080, h: 72, size: 24, lineHeight: 34, lines: 2, align: 'center', color: '0xB8C4D6FF', text: 'Este aparelho ainda não possui uma licença ativa. Assim que a licença for ativada, a TV libera o acesso automaticamente.' });
     S.label(ov, { x: 300, y: 506, w: 1320, h: 26, text: 'CÓDIGO DESTE APARELHO', size: 18, weight: 700, align: 'center', color: '0x8894A8FF', css: 'letter-spacing:0.12em' });
-    S.el(ov, { x: 560, y: 544, w: 800, h: 104, css: 'box-sizing:border-box;border:3px solid #00d7ff;border-radius:18px;background:#0d1422' });
-    this.expiredCode = S.label(ov, { x: 563, y: 547, w: 794, h: 98, size: 44, weight: 700, align: 'center', valign: 'center' });
+    S.el(ov, { x: 560, y: 544, w: 800, h: 104, css: 'box-sizing:border-box;border-radius:18px;background:#0e1524' });
+    this.expiredCode = S.label(ov, { x: 563, y: 547, w: 794, h: 98, size: 34, weight: 700, align: 'center', valign: 'center', css: 'white-space:nowrap' });
     this.expiredInfo = S.label(ov, { x: 300, y: 672, w: 1320, h: 30, size: 20, align: 'center', color: '0x8894A8FF' });
     S.el(ov, { x: 740, y: 738, w: 440, h: 72, text: 'OK   •   Verificar agora', css: 'border-radius:28px;background:#f4f8ff;color:#070b14;font-size:24px;font-weight:600;display:flex;align-items:center;justify-content:center;white-space:pre' });
     S.label(ov, { x: 300, y: 852, w: 1320, h: 28, text: 'Voltar   •   Sair do aplicativo', size: 18, align: 'center', color: '0x8894A8FF', css: 'white-space:pre' });
@@ -80,6 +81,26 @@
 
     this.shell = new EP.AppShell(stage, this);
     this.loading = S.el(stage, { x: 1300, y: 990, w: 560, h: 56, visible: false, css: 'display:flex;align-items:center;justify-content:center;padding:0 24px;border-radius:28px;background:rgba(17,27,45,0.92);border:1px solid rgba(190,222,255,0.16);font-size:20px;color:#c9d3e3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:40' });
+
+    // Bem-vindo de volta (mesmo do Android TV e da Roku): fundo do login, a
+    // lista em uso e uma barra de 1,2 s por cima da Início, que já carrega por
+    // baixo. Entra sozinho, sem apertar nada; uma vez por abertura do app.
+    var wb = this.welcome = S.group(stage, { visible: false });
+    wb.style.zIndex = '45';
+    S.rect(wb, { x: 0, y: 0, w: 1920, h: 1080, color: '0x070B14FF' });
+    S.poster(wb, { x: 0, y: 0, w: 1920, h: 1080, uri: 'images/elvanoq-login-tv-backdrop.jpg' });
+    S.el(wb, { x: 0, y: 0, w: 1920, h: 1080, css: 'background:linear-gradient(90deg,rgba(7,11,20,0.96) 0%,rgba(7,11,20,0.88) 38%,rgba(7,11,20,0.35) 70%,rgba(7,11,20,0) 100%)' });
+    S.poster(wb, { x: 112, y: 72, w: 400, h: 97, uri: 'images/elvanoq-logo-tagline.png', mode: 'fit' }).style.backgroundPosition = 'left center';
+    S.el(wb, { x: 112, y: 345, w: 14, h: 14, css: 'border-radius:7px;background:#00d7ff' });
+    S.label(wb, { x: 140, y: 332, w: 900, h: 40, text: 'TV vinculada ao Portal', size: 22, valign: 'center', color: '0xC9D2E3FF' });
+    S.label(wb, { x: 112, y: 380, w: 1200, h: 84, text: 'Bem-vindo de volta', size: 66, weight: 700, css: 'letter-spacing:-0.026em' });
+    S.label(wb, { x: 112, y: 470, w: 1000, h: 40, text: 'Entrando na sua lista…', size: 27, color: '0xC9D2E3FF' });
+    S.el(wb, { x: 112, y: 550, w: 760, h: 190, css: 'border-radius:24px;background:rgba(14,21,36,0.92)' });
+    this.welcomeInitial = S.el(wb, { x: 142, y: 580, w: 76, h: 76, css: 'border-radius:20px;background:#1a2438;color:#00d7ff;font-size:34px;font-weight:700;display:flex;align-items:center;justify-content:center' });
+    this.welcomeName = S.label(wb, { x: 242, y: 584, w: 600, h: 40, size: 30, weight: 700, css: 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis' });
+    S.label(wb, { x: 242, y: 626, w: 600, h: 30, text: 'Lista em uso', size: 20, color: '0x9AA6BDFF' });
+    S.el(wb, { x: 142, y: 690, w: 700, h: 6, css: 'border-radius:3px;background:rgba(244,248,255,0.14);overflow:hidden', html: '<div class="welcome-bar"></div>' });
+    this.welcomeShown = false;
 
     this.dialog = null;
     this.requestInFlight = false;
@@ -274,13 +295,28 @@
     });
   };
 
+  MainScene.prototype.showWelcomeBack = function () {
+    if (this.welcomeShown) return;
+    this.welcomeShown = true;
+    var meta = EP.Registry.readJson('playlist_metadata', null);
+    if (!meta) return;
+    var name = (meta.display_name || '').replace(/^\s+|\s+$/g, '') || 'Minha lista';
+    var self = this;
+    this.welcomeInitial.textContent = name.charAt(0).toUpperCase();
+    this.welcomeName.textContent = name;
+    S.show(this.welcome, true);
+    setTimeout(function () { S.show(self.welcome, false); }, 1250);
+  };
+
   MainScene.prototype.showActivationState = function (state, message) {
     this.licenseState = state === 'offline' && this.licenseState === 'active' ? 'active' : state;
     if (state === 'active') {
       S.show(this.expiredOverlay, false);
       this.licenseTimer.seconds = ACTIVE_POLL; if (this.licenseTimer.running()) this.licenseTimer.start();
       this.setActivationVisible(false);
+      var firstOpen = !this.shell.isVisible();
       this.shell.show(true);
+      if (firstOpen) this.showWelcomeBack();
       return;
     }
     if (state === 'offline' && this.shell.isVisible()) return; // mantém o app em uso sem rede
