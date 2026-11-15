@@ -9,15 +9,15 @@ const movies=Array.from({length:35},(_,i)=>({id:'m'+i,title:'Movie '+i,type:'mov
 const series={id:'series',title:'Series',type:'series',added_at:'200'};
 const items=[...movies,series,{...movies[34],id:'dub',title:'Movie 34 DUB'},{id:'live',type:'live',added_at:'999'}];
 v.setCatalog({items});assert.equal(v.rails[0].items.length,30);assert.equal(v.rails[1].group.visible,false);assert.equal(v.rails[0].items[0].item.id,'series');
-v.handleKey('down');v.handleKey('down');assert.equal(v.railRow,0);assert.equal(v.scroller.style.transform,'translateY(-328px)');
+v.handleKey('down');v.handleKey('down');assert.equal(v.railRow,0);assert.equal(v.scroller.style.transform,'translateY(-126px)');
 const before=v.rails[0].items.map(x=>x.item.id);
 state.continue_watching=[{id:'m0',updated_at:'2026-01-01',progress_seconds:10,duration_seconds:100},{id:'series:episode:7',updated_at:'2026-02-01',progress_seconds:50,duration_seconds:100}];
 v.setActive(true);assert.deepEqual(v.rails[0].items.map(x=>x.item.id),before);assert.equal(v.rails[1].items[0].item,series);assert.equal(v.rails[1].items[0].progress,.5);
 for(let i=0;i<12;i++)v.handleKey('right');assert.equal(v.rails[0].index,12);const offset=v.rails[0].offset;
-v.handleKey('down');assert.equal(v.railRow,1);assert.equal(v.rails[1].index,1);assert.equal(v.scroller.style.transform,'translateY(-712px)');
+v.handleKey('down');assert.equal(v.railRow,1);assert.equal(v.rails[1].index,1);assert.equal(v.scroller.style.transform,'translateY(-510px)');
 v.handleKey('left');assert.equal(v.rails[1].index,0);v.handleKey('up');assert.equal(v.rails[0].offset,offset);assert.equal(v.rails[0].index,offset);
 v.rails[1].posters[1].click();assert.equal(v.railRow,1);assert.equal(v.events.last[0],'playRequested');assert.equal(v.events.last[1].id,'m0');
-state.continue_watching=[];v.setActive(true);assert.equal(v.railRow,0);assert.equal(v.rails[1].group.visible,false);assert.equal(v.scroller.style.transform,'translateY(-328px)');
+state.continue_watching=[];v.setActive(true);assert.equal(v.railRow,0);assert.equal(v.rails[1].group.visible,false);assert.equal(v.scroller.style.transform,'translateY(-126px)');
 v.handleKey('up');assert.equal(v.area,'tiles');assert.equal(v.scroller.style.transform,'translateY(0)');
 console.log('Home: two rows, grouping, progress, navigation, pointer and refresh passed');
 

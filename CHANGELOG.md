@@ -1,3 +1,13 @@
+# 1.2.0 — 2026-11-14
+
+Redesign de TV aprovado (mesmo sistema visual do Android 2.17.61–2.17.63 e da Roku 1.1.8).
+
+- **Menu com ícones na Início:** os seis blocos dão lugar a um menu no topo, ao lado da marca — Início, TV ao Vivo, Filmes, Séries e Minha Lista em pílulas com ícone, Ajustes só com ícone e o relógio à direita. Sem atalho de Busca (continua dentro de Filmes e Séries). Aba ativa com fundo elevado `#1a2438` e ícone ciano; foco em pílula clara. Ordem vertical: menu › destaque › Novidades › Continuar; Voltar leva ao menu antes de sair. As fileiras sobem para onde ficavam os blocos. Novo ícone `home` em `src/core/icons.js`.
+- **Destaque acompanha o pôster em foco:** parar 300 ms sobre um pôster de "Novidades para você" leva o título ao destaque (com os metadados sob demanda já usados); a rotação para até a lista ser recarregada.
+- **Foco:** anel branco nos pôsteres (ciano fica para estado ativo). Categorias, temporadas e filtros com foco em pílula clara e selecionado com fundo elevado e ponto/marcador ciano.
+- **Filmes e Séries:** a faixa do título em foco sai do rodapé e fica acima da grade; painel de categorias sem borda.
+- **Player:** relógio no topo e, em filmes e episódios, "termina às HH:MM" (no lugar de "ELVANOQ PLAY"). Ao abrir filme ou episódio, a capa já baixada na tela anterior ocupa a tela com véu, título e uma linha fina animada até o primeiro quadro (campo `cover`); ao vivo, rever e trailer não usam.
+
 # 1.1.9 — 2026-11-14
 
 - **Novidades para você com os lançamentos de verdade:** nas listas Xtream, a semente do Início passa a ser a categoria do servidor com nome de lançamentos (ex.: "Lançamentos", "Novidades", "Recentes", "Adicionados"; categorias adultas ficam de fora). Sem uma, usa a primeira categoria não adulta. A fileira usa só essa semente e não mistura os títulos salvos (Minha Lista e Continuar assistindo). Mesmo ajuste da Roku 1.1.7 e da Samsung MSX.

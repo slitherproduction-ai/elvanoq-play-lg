@@ -1,7 +1,8 @@
 /* Filmes e Séries — BrowseView do ELVANOQ Play Roku 0.1.88 (mesma geometria):
  *   cabeçalho (título, contagem, dica), painel de categorias 400x830 com 14
  *   linhas e contagem, grade 6x2 de pôsteres 200x300 com paginação automática
- *   (↓ na última fileira avança, ↑ na primeira volta) e rodapé do título focado.
+ *   (↓ na última fileira avança, ↑ na primeira volta) e, acima da grade, a
+ *   faixa do título focado (redesign de TV, igual no Android, Roku e MSX).
  * Lista Xtream: categorias completas; os títulos chegam por categoria
  * (setCategoryItems) 350 ms depois que o controle para.
  */
@@ -9,7 +10,7 @@
   'use strict';
   var S = EP.Stage;
   var ROWS = 14, ROW_Y = 236, ROW_STRIDE = 52;
-  var GRID_X = 504, GRID_Y = 226, POSTER_W = 200, POSTER_H = 300, GAP_X = 28, GAP_Y = 36, COLS = 6, PAGE = 12;
+  var GRID_X = 504, GRID_Y = 300, POSTER_W = 200, POSTER_H = 300, GAP_X = 28, GAP_Y = 36, COLS = 6, PAGE = 12;
 
   function BrowseView(parent, kind) {
     var root = this.root = S.group(parent, { className: 'layer' });
@@ -21,9 +22,11 @@
     this.countLabel = S.label(root, { x: 64, y: 118, w: 900, h: 28, size: 20, color: '0x8894A8FF', text: 'Carregando catálogo…' });
     S.label(root, { x: 1044, y: 118, w: 800, h: 28, size: 20, align: 'right', color: '0x8894A8FF', text: kind === 'series' ? '←  Categorias e Busca   •   OK  Temporadas e episódios' : '←  Categorias e Busca   •   OK  Detalhes e assistir' });
 
-    S.el(root, { x: 64, y: 176, w: 400, h: 830, className: 'panel', css: 'background:#0d1422' });
+    S.el(root, { x: 64, y: 176, w: 400, h: 830, className: 'panel', css: 'background:#0a101c;border-color:transparent' });
     S.label(root, { x: 92, y: 196, w: 300, h: 26, text: 'CATEGORIAS', size: 18, weight: 700, color: '0x8894A8FF', css: 'letter-spacing:0.08em' });
-    this.categoryFocus = S.el(root, { x: 76, y: ROW_Y, w: 376, h: 46, visible: false, css: 'border-radius:12px;background:#147dff;box-shadow:0 0 0 3px #00d7ff' });
+    // Selecionada = fundo elevado + marcador ciano; foco = pílula clara.
+    this.categorySelected = S.el(root, { x: 76, y: ROW_Y, w: 376, h: 46, visible: false, css: 'border-radius:12px;background:#1a2438' });
+    this.categoryFocus = S.el(root, { x: 76, y: ROW_Y, w: 376, h: 46, visible: false, css: 'border-radius:12px;background:#f4f8ff' });
     this.categoryMarker = S.el(root, { x: 76, y: ROW_Y, w: 4, h: 46, visible: false, css: 'border-radius:2px;background:#00d7ff' });
     this.rowLabels = []; this.rowCounts = [];
     for (var i = 0; i < ROWS; i++) {
@@ -36,11 +39,11 @@
     }
     this.categoryScroll = S.label(root, { x: 92, y: 966, w: 348, h: 28, size: 18, align: 'center', color: '0x8894A8FF' });
 
-    this.eyebrow = S.label(root, { x: GRID_X, y: 186, w: 1340, h: 26, size: 18, weight: 700, color: '0x00D7FFFF', css: 'letter-spacing:0.08em' });
+    this.eyebrow = S.label(root, { x: GRID_X, y: 180, w: 820, h: 26, size: 18, weight: 700, color: '0x00D7FFFF', css: 'letter-spacing:0.08em' });
     this.grid = S.el(root, { x: GRID_X, y: GRID_Y, w: 1340, h: 640 });
-    this.selectedTitle = S.label(root, { x: GRID_X, y: 904, w: 820, h: 44, size: 26, weight: 600 });
-    this.selectedMeta = S.label(root, { x: GRID_X, y: 950, w: 820, h: 30, size: 20, color: '0x8894A8FF' });
-    this.filterLabel = S.label(root, { x: 1344, y: 916, w: 500, h: 30, size: 20, align: 'right', color: '0x8894A8FF' });
+    this.selectedTitle = S.label(root, { x: GRID_X, y: 206, w: 1340, h: 48, size: 36, weight: 700, css: 'letter-spacing:-0.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' });
+    this.selectedMeta = S.label(root, { x: GRID_X, y: 256, w: 1000, h: 30, size: 20, color: '0xC9D2E3FF' });
+    this.filterLabel = S.label(root, { x: 1344, y: 180, w: 500, h: 30, size: 20, align: 'right', color: '0x8894A8FF' });
     this.emptyState = S.label(root, { x: GRID_X, y: 500, w: 1340, h: 48, size: 24, align: 'center', color: '0x8894A8FF', visible: false });
 
     this.categories = []; this.allItems = []; this.selectedItems = [];
@@ -211,13 +214,14 @@
       label.textContent = c.name;
       count.textContent = c.total < 0 ? '' : EP.formatNumber(c.total);
       var current = index === this.categoryIndex;
-      var color = current ? (onList ? '#ffffff' : '#00d7ff') : (c.special ? '#00d7ff' : '#c9d3e3');
+      var color = current ? (onList ? '#070b14' : '#f4f8ff') : (c.special ? '#00d7ff' : '#c9d3e3');
       label.style.color = color; label.style.fontWeight = current ? '600' : '400';
-      count.style.color = current ? color : '#8894a8';
+      count.style.color = current ? (onList ? '#070b14' : '#9aa6bd') : '#8894a8';
     }
     var y = ROW_Y + (this.categoryIndex - this.categoryOffset) * ROW_STRIDE;
-    S.move(this.categoryFocus, 76, y); S.move(this.categoryMarker, 76, y);
+    S.move(this.categoryFocus, 76, y); S.move(this.categoryMarker, 76, y); S.move(this.categorySelected, 76, y);
     S.show(this.categoryFocus, onList);
+    S.show(this.categorySelected, !onList && this.categories.length > 0);
     S.show(this.categoryMarker, !onList && this.categories.length > 0);
     this.categoryScroll.textContent = this.categories.length > ROWS ? (this.categoryIndex + 1) + ' de ' + this.categories.length : '';
   };

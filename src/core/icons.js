@@ -6,6 +6,7 @@
   var S = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
   var F = 'fill="currentColor"';
   var PATHS = {
+    home: '<path d="M3.5 11 12 4l8.5 7" ' + S + '/><path d="M6 9.5V20h4.5v-5.5h3V20H18V9.5" ' + S + '/>',
     tv: '<rect x="3" y="6.5" width="18" height="12.5" rx="2.5" ' + S + '/><path d="M8.5 2.8 12 6.3l3.5-3.5M9 22h6" ' + S + '/>',
     film: '<path d="M4 9h16v10.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19.5Z" ' + S + '/><path d="m3.6 9 15.6-4.2-.8-3L3.1 6Z" ' + S + '/><path d="m7.4 4.9 2.3 3M12.2 3.6l2.3 3M8 12.5h8" ' + S + '/>',
     series: '<rect x="7" y="7" width="14" height="13" rx="2" ' + S + '/><path d="M4 16V5.5A1.5 1.5 0 0 1 5.5 4H16" ' + S + '/><path d="m12.5 10.6 4 2.9-4 2.9Z" ' + F + '/>',
