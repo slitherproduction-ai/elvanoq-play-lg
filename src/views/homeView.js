@@ -229,16 +229,26 @@
 
   /* Arte larga: ocupa todo o destaque; pôster vertical fica à direita. */
   HomeView.prototype.setArt = function (backdrop, poster) {
-    var art = this.art;
-    if (backdrop) {
-      S.move(art, 0, 0, 1920);
-      art.style.backgroundImage = 'url("' + EP.sizedImage(backdrop, 'backdrop').replace(/"/g, '%22') + '")';
-      art.style.opacity = '0.85';
-    } else if (poster) {
-      S.move(art, 1040, 0, 880);
-      art.style.backgroundImage = 'url("' + EP.sizedImage(poster, 'heroPoster').replace(/"/g, '%22') + '")';
-      art.style.opacity = '0.55';
-    } else art.style.opacity = '0';
+    var self = this, art = this.art, token = this.artToken = (this.artToken || 0) + 1;
+    var wide = EP.imageCandidates([backdrop && backdrop !== poster ? EP.sizedImage(backdrop, 'backdrop') : '']);
+    var tall = EP.imageCandidates([poster ? EP.sizedImage(poster, 'heroPoster') : '']);
+    function paint(url) { art.style.backgroundImage = 'url("' + url.replace(/"/g, '%22') + '")'; }
+    EP.firstLoadable(wide, function (url) {
+      if (token !== self.artToken) return;
+      if (url) {
+        S.move(art, 0, 0, 1920);
+        paint(url);
+        art.style.opacity = '0.85';
+        return;
+      }
+      EP.firstLoadable(tall, function (posterUrl) {
+        if (token !== self.artToken) return;
+        if (!posterUrl) { art.style.opacity = '0'; return; }
+        S.move(art, 1040, 0, 880);
+        paint(posterUrl);
+        art.style.opacity = '0.55';
+      });
+    });
   };
 
   HomeView.prototype.nextSlide = function (delta) {

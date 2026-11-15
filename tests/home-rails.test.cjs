@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 function node(){return {style:{},children:[],appendChild(n){this.children.push(n)},addEventListener(k,fn){this[k]=fn},set innerHTML(v){this.children=[]}}}
 let state={continue_watching:[],favorites:[]};
 global.window=global;global.document={createElement:node};global.setInterval=()=>0;
-global.EP={Stage:{group:node,rect:node,el:node,label:node,poster:node,button:node,show:(n,v)=>n.visible=v,focus:(n,v)=>n.focused=v,toggle(){},setButton(){},move(){},setPoster(){}},LocalState:{load:()=>state,isFavorite:()=>false},Emitter:function(){this.emit=(...x)=>this.last=x},icon:node,clockText:()=>({}),Timer:function(){this.start=this.stop=()=>{}},lower:s=>String(s||'').toLowerCase(),displayTitle:s=>s.replace(/ (DUB|LEG)$/,''),qualityOf:()=>'',sizedImage:s=>s};
+global.EP={Stage:{group:node,rect:node,el:node,label:node,poster:node,button:node,show:(n,v)=>n.visible=v,focus:(n,v)=>n.focused=v,toggle(){},setButton(){},move(){},setPoster(){}},LocalState:{load:()=>state,isFavorite:()=>false},Emitter:function(){this.emit=(...x)=>this.last=x},icon:node,clockText:()=>({}),Timer:function(){this.start=this.stop=()=>{}},lower:s=>String(s||'').toLowerCase(),displayTitle:s=>s.replace(/ (DUB|LEG)$/,''),qualityOf:()=>'',sizedImage:s=>s,imageCandidates:l=>l.filter(Boolean),firstLoadable:(l,done)=>done(l[0]||"")};
 require('../src/views/homeView.js');
 const v=new EP.HomeView(node());v.buildSlides=()=>{};
 const movies=Array.from({length:35},(_,i)=>({id:'m'+i,title:'Movie '+i,type:'movies',year:2026,added_at:String(100+i)}));

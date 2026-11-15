@@ -81,12 +81,30 @@
   };
 
   DetailView.prototype.setArt = function (backdrop, poster) {
-    S.setPoster(this.poster, poster || backdrop, 'detail');
-    this.posterFallback.textContent = poster || backdrop ? '' : EP.displayTitle(this.item.title);
-    var art = backdrop ? EP.sizedImage(backdrop, 'backdrop') : EP.sizedImage(poster, 'detail');
-    this.backdrop.style.backgroundImage = art ? 'url("' + art.replace(/"/g, '%22') + '")' : 'none';
-    this.backdrop.style.opacity = art ? '0.55' : '0';
-    this.backdrop.style.filter = backdrop ? 'none' : 'blur(18px)';
+    var self = this, token = this.artToken = (this.artToken || 0) + 1;
+    var title = EP.displayTitle(this.item.title);
+    var covers = EP.imageCandidates([poster ? EP.sizedImage(poster, 'detail') : '', backdrop ? EP.sizedImage(backdrop, 'detail') : '']);
+    var wide = EP.imageCandidates([backdrop ? EP.sizedImage(backdrop, 'backdrop') : '']);
+    EP.firstLoadable(covers, function (url) {
+      if (token !== self.artToken) return;
+      S.setPoster(self.poster, url, 'detail');
+      self.posterFallback.textContent = url ? '' : title;
+    });
+    EP.firstLoadable(wide, function (url) {
+      if (token !== self.artToken) return;
+      if (url) { self.paintBackdrop(url, false); return; }
+      // Sem imagem larga: a capa desfocada vira fundo, como antes.
+      EP.firstLoadable(covers, function (coverUrl) {
+        if (token !== self.artToken) return;
+        self.paintBackdrop(coverUrl, true);
+      });
+    });
+  };
+
+  DetailView.prototype.paintBackdrop = function (url, blurred) {
+    this.backdrop.style.backgroundImage = url ? 'url("' + url.replace(/"/g, '%22') + '")' : 'none';
+    this.backdrop.style.opacity = url ? '0.55' : '0';
+    this.backdrop.style.filter = blurred ? 'blur(18px)' : 'none';
   };
 
   DetailView.prototype.setMetadata = function (metadata) {
