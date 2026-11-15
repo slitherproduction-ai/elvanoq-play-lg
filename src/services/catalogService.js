@@ -20,6 +20,26 @@
     return categories[0];
   }
 
+  /* Novidades numa lista M3U (ou Xtream que voltou para o M3U): os filmes e
+   * as séries do grupo com nome de lançamentos, como a semente Xtream. Sem
+   * esse grupo, devolve [] e a Início usa a lista toda pela data de inclusão. */
+  function newsItems(items) {
+    var groups = { movies: {}, series: {} }, order = { movies: [], series: [] }, out = [], i;
+    for (i = 0; i < items.length; i++) {
+      var item = items[i], kind = item.type, name = String(item.category || '');
+      if (kind !== 'movies' && kind !== 'series') continue;
+      if (!groups[kind][name]) { groups[kind][name] = []; order[kind].push({ name: name }); }
+      groups[kind][name].push(item);
+    }
+    var kinds = ['movies', 'series'];
+    for (i = 0; i < kinds.length; i++) {
+      var list = order[kinds[i]], named = false;
+      for (var j = 0; j < list.length; j++) if (NEWS_CATEGORY.test(list[j].name) && !ADULT_CATEGORY.test(list[j].name)) { named = true; break; }
+      if (named) out = out.concat(groups[kinds[i]][newsCategory(list).name]);
+    }
+    return out;
+  }
+
   function fail(error, fallback) {
     return new Error(error && error.message === 'timeout' ? 'O servidor da lista demorou para responder.' : fallback);
   }
@@ -82,6 +102,7 @@
 
   var Catalog = EP.CatalogService = {
     newsCategory: newsCategory,
+    newsItems: newsItems,
     load: function (playlist) {
       if (!playlist || !playlist.credentials) return Promise.reject(new Error('A lista vinculada ainda não possui uma fonte compatível.'));
       if (playlist.sourceType !== 'xtream') {
