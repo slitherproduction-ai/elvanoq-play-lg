@@ -117,7 +117,9 @@
   var MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
   EP.clockText = function (date) {
     date = date || new Date();
-    return { time: EP.pad2(date.getHours()) + ':' + EP.pad2(date.getMinutes()), date: date.getDate() + ' ' + MONTHS[date.getMonth()] + ' ' + date.getFullYear() };
+    // Idioma: em inglês, "Nov 16 2026".
+    var en = EP.I18n && EP.I18n.language() === 'en';
+    return { time: EP.pad2(date.getHours()) + ':' + EP.pad2(date.getMinutes()), date: en ? EP.I18n.months()[date.getMonth()] + ' ' + date.getDate() + ' ' + date.getFullYear() : date.getDate() + ' ' + MONTHS[date.getMonth()] + ' ' + date.getFullYear() };
   };
 
   EP.formatNumber = function (value) {

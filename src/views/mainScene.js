@@ -22,8 +22,26 @@
     // Redesign (canvas "Proposta visual Login e Ativação", tela 3): coluna
     // à esquerda com passos, código e ações; QR num cartão à direita.
     S.poster(root, { x: 96, y: 64, w: 400, h: 80, uri: 'images/elvanoq-logo-tagline.png', mode: 'fit' }).style.backgroundPosition = 'left center';
-    this.clockTime = S.label(root, { x: 1460, y: 64, w: 364, h: 54, size: 44, weight: 600, align: 'right' });
-    this.clockDate = S.label(root, { x: 1460, y: 120, w: 364, h: 28, size: 20, align: 'right', color: '0x9AA6BDFF' });
+    // Topo à direita (canvas "Idioma do aplicativo", tela 9): botão de idioma
+    // e, a 36 px dele, o relógio.
+    var top = S.el(root, { x: 960, y: 64, w: 864, h: 86, css: 'display:-webkit-flex;display:flex;-webkit-justify-content:flex-end;justify-content:flex-end;-webkit-align-items:center;align-items:center' });
+    this.languageButton = document.createElement('div');
+    this.languageButton.className = 'lang-pill';
+    this.languageButton.appendChild(EP.icon('language'));
+    var languageLabel = document.createElement('span');
+    var languagePref = EP.I18n.preference();
+    languageLabel.textContent = languagePref === 'en' ? 'English' : languagePref === 'pt' ? 'Português (Brasil)' : 'Automático';
+    this.languageButton.appendChild(languageLabel);
+    this.languageButton.appendChild(EP.icon('chevronDown'));
+    top.appendChild(this.languageButton);
+    var clock = document.createElement('div');
+    clock.style.cssText = 'margin-left:36px;text-align:right';
+    this.clockTime = document.createElement('div');
+    this.clockTime.style.cssText = 'font-size:44px;line-height:54px;font-weight:600;color:#f4f8ff';
+    this.clockDate = document.createElement('div');
+    this.clockDate.style.cssText = 'font-size:20px;line-height:28px;color:#9aa6bd';
+    clock.appendChild(this.clockTime); clock.appendChild(this.clockDate);
+    top.appendChild(clock);
     S.label(root, { x: 96, y: 246, w: 900, h: 26, text: 'ACESSO SEGURO', size: 18, weight: 700, color: '0x00D7FFFF', css: 'letter-spacing:0.11em' });
     this.headline = S.label(root, { x: 96, y: 282, w: 1000, h: 84, text: 'Ative sua TV', size: 72, weight: 700, css: 'letter-spacing:-0.021em' });
     this.description = S.label(root, { x: 96, y: 374, w: 1000, h: 36, size: 24, color: '0xC9D2E3FF', text: 'Vincule esta TV ao Portal ELVANOQ Play em três passos.' });
@@ -51,7 +69,7 @@
     ];
     S.setButton(this.shortcuts[0], 'refresh', 'Verificar ativação');
     S.setButton(this.shortcuts[1], 'info', 'Como ativar');
-    this.actions = [this.button, this.shortcuts[0], this.shortcuts[1]];
+    this.actions = [this.button, this.shortcuts[0], this.shortcuts[1], this.languageButton];
     this.actionIndex = 0;
     for (var k = 0; k < this.actions.length; k++) {
       (function (index) { self.actions[index].addEventListener('click', function () { self.actionIndex = index; self.updateActionFocus(); self.runAction(); }); }(k));
@@ -139,7 +157,7 @@
     }
     // Sem identificação ainda, "Verificar ativação" não faz sentido.
     S.show(this.shortcuts[0], ready);
-    S.move(this.shortcuts[1], ready ? 583 : 112, 885, ready ? 459 : 930);
+    S.move(this.shortcuts[1], ready ? 484 : 96, 900, ready ? 372 : 760);
     if (!ready && this.actionIndex === 1) this.actionIndex = 0;
     this.updateActionFocus();
   };
@@ -150,7 +168,10 @@
 
   MainScene.prototype.moveAction = function (key) {
     var ready = !!Portal.identity, i = this.actionIndex;
-    if (key === 'down' && i === 0) i = ready ? 1 : 2;
+    // ↑ a partir do botão principal leva ao idioma; ↓ volta.
+    if (i === 3) { if (key === 'down') i = 0; }
+    else if (key === 'up' && i === 0) i = 3;
+    else if (key === 'down' && i === 0) i = ready ? 1 : 2;
     else if (key === 'up' && i > 0) i = 0;
     else if (key === 'left' && i === 2 && ready) i = 1;
     else if (key === 'right' && i === 1) i = 2;
@@ -159,6 +180,7 @@
   };
 
   MainScene.prototype.runAction = function () {
+    if (this.actionIndex === 3) { this.openLanguage(); return; }
     if (this.actionIndex !== 2) EP.Registry.remove('login_removed');
     if (this.actionIndex === 0) {
       if (!Portal.identity) this.giveConsent(); else this.openServerCodeKeyboard();
@@ -193,10 +215,9 @@
   };
 
   MainScene.prototype.updateClock = function () {
-    var now = new Date(), days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-    var months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    var now = new Date();
     this.clockTime.textContent = EP.clockText(now).time;
-    this.clockDate.textContent = days[now.getDay()] + ', ' + now.getDate() + ' ' + months[now.getMonth()];
+    this.clockDate.textContent = EP.I18n.clockDate(now);
   };
 
   // Cores do ponto de status como no setStatusTone do Roku.
@@ -365,6 +386,12 @@
     Portal.ensureIdentity().then(function () { self.updateIdentity(); self.connect(); }, function () {
       self.status.textContent = 'Não foi possível preparar a ativação desta TV. Reinicie o aplicativo.';
     });
+  };
+
+  MainScene.prototype.openLanguage = function () {
+    if (this.dialog && !this.dialog.closed) this.dialog.close();
+    this.dialog = new EP.LanguageDialog(this.stage);
+    return this.dialog;
   };
 
   MainScene.prototype.openList = function (opts) {

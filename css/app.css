@@ -289,3 +289,11 @@ video.sg-video::-webkit-media-controls { display: none !important; }
 .welcome-bar { width: 100%; height: 100%; background: var(--accent); -webkit-transform-origin: left center; transform-origin: left center; -webkit-animation: welcome-fill 1.2s ease-out forwards; animation: welcome-fill 1.2s ease-out forwards; }
 @-webkit-keyframes welcome-fill { from { -webkit-transform: scaleX(0); } to { -webkit-transform: scaleX(1); } }
 @keyframes welcome-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* Idioma no login (canvas "Idioma do aplicativo"): pílula escura; em foco, clara. */
+.lang-pill { box-sizing: border-box; height: 56px; padding: 0 22px 0 18px; border-radius: 28px; background: rgba(14, 21, 36, 0.92); color: #f4f8ff; font-size: 20px; font-weight: 600; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; white-space: nowrap; }
+.lang-pill .icon { width: 26px; height: 26px; color: #00d7ff; }
+.lang-pill .icon + span { margin: 0 12px; }
+.lang-pill span + .icon { width: 20px; height: 20px; color: #f4f8ff; }
+.lang-pill.focused { background: #f4f8ff; color: #070b14; }
+.lang-pill.focused .icon, .lang-pill.focused span + .icon { color: #070b14; }
