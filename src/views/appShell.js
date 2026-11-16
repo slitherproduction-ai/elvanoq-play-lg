@@ -391,6 +391,7 @@
 
   AppShell.prototype.onSettingsAction = function (action) {
     if (action === 'account') this.app.openAccount();
+    if (action === 'language') this.app.openLanguage();
     else if (action === 'sync') this.app.requestPlaylistSync(true);
     else if (action === 'code') this.app.openServerCodeKeyboard();
   };
@@ -626,10 +627,10 @@
   AppShell.prototype.openCatchupList = function (item) {
     var self = this;
     var dialog = this.app.openList({ title: 'Rever programas', subtitle: EP.displayTitle(item.title), items: [], loading: true });
-    var dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    var dayNames = EP.I18n.shortDays();
     function when(p) {
       var d = new Date(p.start), today = new Date(), yesterday = new Date(today.getTime() - 86400000);
-      var day = d.toDateString() === today.toDateString() ? 'Hoje' : d.toDateString() === yesterday.toDateString() ? 'Ontem' : dayNames[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth() + 1);
+      var day = d.toDateString() === today.toDateString() ? EP.tr('Hoje') : d.toDateString() === yesterday.toDateString() ? EP.tr('Ontem') : dayNames[d.getDay()] + ' ' + (EP.I18n.language() === 'en' ? (d.getMonth() + 1) + '/' + d.getDate() : d.getDate() + '/' + (d.getMonth() + 1));
       return day + '   ' + EP.clockText(d).time + ' – ' + EP.clockText(new Date(p.stop)).time;
     }
     this.epg.archive(item, function (result) {

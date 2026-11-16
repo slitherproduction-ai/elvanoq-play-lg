@@ -39,6 +39,7 @@
   function boot() {
     var stage = document.getElementById('stage');
     EP.Stage.fit(stage);
+    EP.I18n.start();
     var scene = EP.scene = new EP.MainScene(stage);
     EP.Perf.start();
 

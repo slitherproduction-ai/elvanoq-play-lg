@@ -29,6 +29,10 @@
     trash: '<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13" ' + S + '/>',
     grid: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5" ' + S + '/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" ' + S + '/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" ' + S + '/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" ' + S + '/>',
     chevronRight: '<path d="m9 5 7 7-7 7" ' + S + ' stroke-width="2.4"/>',
+    // Idioma (canvas "Idioma do aplicativo"): globo, seta para baixo e ✓.
+    language: '<circle cx="12" cy="12" r="9" ' + S + '/><path d="M3 12h18M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z" ' + S + '/>',
+    chevronDown: '<path d="M6 9l6 6 6-6" ' + S + '/>',
+    checkThin: '<path d="M5 12.5l4.5 4.5L19 7.5" ' + S + ' stroke-width="2.4"/>',
     chevronLeft: '<path d="m15 5-7 7 7 7" ' + S + ' stroke-width="2.4"/>',
     back10: '<path d="M4 5v5h5" ' + S + '/><path d="M4.5 10A8 8 0 1 1 6 16.5" ' + S + '/><text x="12.3" y="15.2" font-size="7" font-weight="700" text-anchor="middle" ' + F + ' font-family="Inter,Arial">10</text>',
     fwd10: '<path d="M20 5v5h-5" ' + S + '/><path d="M19.5 10A8 8 0 1 0 18 16.5" ' + S + '/><text x="11.7" y="15.2" font-size="7" font-weight="700" text-anchor="middle" ' + F + ' font-family="Inter,Arial">10</text>',
