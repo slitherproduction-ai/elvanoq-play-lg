@@ -1,3 +1,8 @@
+# 1.2.1 — 2026-11-18
+
+- **Novidades para você igual ao Android** (`recentTitles` do Android): nas listas Xtream, a fileira passa a mostrar os filmes adicionados mais recentemente no **catálogo inteiro** (data `added` do servidor), e não mais só os primeiros 150 da categoria de lançamentos. A Início abre como antes (com a última lista de Novidades guardada desta lista, ou a semente de lançamentos na primeira vez) e, em segundo plano, lê a lista completa de filmes (o mesmo download da Busca), separa os 60 mais novos sem converter o resto e troca só a fileira, sem mexer no destaque nem no foco. Versões do mesmo título agrupadas; mostra 30. Séries só completam quando a lista tem menos de 60 filmes, na ordem do servidor (como no Android). Categorias adultas ficam de fora. Lista M3U sem mudança.
+- Novo teste `tests/recent-titles.test.cjs`.
+
 # 1.2.0 — 2026-11-14
 
 Redesign de TV aprovado (mesmo sistema visual do Android 2.17.61–2.17.63 e da Roku 1.1.8).

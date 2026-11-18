@@ -104,6 +104,14 @@
     this.clock.textContent = c.time;
   };
 
+  /* Novidades prontas em segundo plano: troca só a fileira, sem mexer no destaque. */
+  HomeView.prototype.setRecentTitles = function (items) {
+    if (!items || !items.length || !this.byId) return;
+    this.recentItems = items;
+    this.recentOrdered = true;
+    this.buildRail(this.vodItems || [], this.byId);
+  };
+
   HomeView.prototype.renderGlow = function (index) {
     var color = GLOWS[index % GLOWS.length];
     this.glow.style.background = 'radial-gradient(ellipse 900px 520px at 88% 6%, ' + color + ', rgba(7,11,20,0) 72%), radial-gradient(ellipse 700px 400px at 60% 0%, rgba(20,125,255,0.10), rgba(7,11,20,0) 70%)';
@@ -115,6 +123,7 @@
     this.metadataLoader = payload && payload.metadataLoader;
     this.catalogItems = items;
     this.recentItems = (payload && payload.recent && payload.recent.length) ? payload.recent : null;
+    this.recentOrdered = !!(payload && payload.recentOrdered);
     if (!items.length) {
       this.heroTimer.stop();
       this.slides = [];
@@ -132,6 +141,7 @@
       if (items[i].type === 'movies' || items[i].type === 'series') vod.push(items[i]);
     }
     this.byId = byId;
+    this.vodItems = vod;
     this.pinned = null;
     this.buildSlides(vod.length ? vod : items);
     this.buildRail(vod, byId);
@@ -271,7 +281,8 @@
     items = []; seen = {};
     var recentPool = vod;
     if (this.recentItems) { recentPool = []; for (i = 0; i < this.recentItems.length; i++) if (this.recentItems[i].type !== 'live') recentPool.push(this.recentItems[i]); }
-    var sorted = recentPool.slice().sort(function (a, b) { return addedValue(b) > addedValue(a) ? 1 : addedValue(b) < addedValue(a) ? -1 : 0; });
+    // Lista já na ordem final (regra do Android): não reordena.
+    var sorted = this.recentOrdered ? recentPool : recentPool.slice().sort(function (a, b) { return addedValue(b) > addedValue(a) ? 1 : addedValue(b) < addedValue(a) ? -1 : 0; });
     var titles = {};
     for (i = 0; i < sorted.length && items.length < RAIL_LIMIT; i++) {
       var key = EP.lower(EP.displayTitle(sorted[i].title)) + '|' + (sorted[i].year || '');

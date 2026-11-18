@@ -40,6 +40,73 @@
     return out;
   }
 
+  /* Novidades para você igual ao Android (recentTitles, app/(tabs)/index.tsx):
+   * no catálogo inteiro de filmes, os 60 com a data de inclusão (added) mais
+   * nova; se a lista tiver menos de 60 filmes, completa com séries na ordem do
+   * servidor. A Início agrupa as versões do mesmo título e mostra 30. Lê a lista
+   * completa já usada pela Busca e só converte em itens os escolhidos. */
+  var RECENT_WANTED = 60;
+  function addedSeconds(object) {
+    var m = /"added"\s*:\s*"?(\d+)/.exec(object);
+    var n = m ? Number(m[1]) : 0;
+    return n > 10000000000 ? Math.floor(n / 1000) : n;
+  }
+  function categoryNames(categories) {
+    var names = {};
+    for (var i = 0; i < (categories || []).length; i++) names[String(categories[i].id)] = categories[i].name;
+    return names;
+  }
+  // Objetos da lista bruta que têm `key` (stream_id / series_id), em ordem.
+  function eachObject(raw, key, visit) {
+    var re = new RegExp('"' + key + '"\\s*:', 'g'), match, last = -1;
+    while ((match = re.exec(raw))) {
+      var start = raw.lastIndexOf('{', match.index), end = raw.indexOf('}', match.index);
+      if (start === -1 || end === -1 || start <= last) continue;
+      last = start;
+      if (visit(start, end + 1) === false) return;
+    }
+  }
+  function categoryOfObject(object, names) {
+    var m = /"category_id"\s*:\s*"?([^",}]*)/.exec(object);
+    return m ? names[String(m[1])] || '' : '';
+  }
+  function toItems(kind, xt, raw, spans, names) {
+    var out = [];
+    for (var i = 0; i < spans.length; i++) {
+      var stream;
+      try { stream = JSON.parse(raw.slice(spans[i].start, spans[i].end)); } catch (_) { continue; }
+      var item = R().xtreamCategoryItems(kind, xt.host, xt.username, xt.password, [stream], names[String(stream.category_id)] || '', xt.liveExtension, 1)[0];
+      if (item) out.push(item);
+    }
+    return out;
+  }
+  function newestMovieSpans(raw, names, wanted) {
+    var top = [], count = 0;
+    eachObject(raw, 'stream_id', function (start, end) {
+      var object = raw.slice(start, end);
+      if (ADULT_CATEGORY.test(categoryOfObject(object, names))) return;
+      count++;
+      var added = addedSeconds(object);
+      // Mesma regra do topItems do Android: estável, mais novo primeiro.
+      if (top.length === wanted && added <= top[top.length - 1].added) return;
+      var index = top.length;
+      while (index > 0 && added > top[index - 1].added) index--;
+      top.splice(index, 0, { added: added, start: start, end: end });
+      if (top.length > wanted) top.pop();
+    });
+    return top;
+  }
+  function firstSeriesSpans(raw, names, wanted) {
+    var spans = [];
+    if (wanted <= 0) return spans;
+    eachObject(raw, 'series_id', function (start, end) {
+      if (ADULT_CATEGORY.test(categoryOfObject(raw.slice(start, end), names))) return;
+      spans.push({ start: start, end: end });
+      return spans.length < wanted;
+    });
+    return spans;
+  }
+
   function fail(error, fallback) {
     return new Error(error && error.message === 'timeout' ? 'O servidor da lista demorou para responder.' : fallback);
   }
@@ -103,6 +170,20 @@
   var Catalog = EP.CatalogService = {
     newsCategory: newsCategory,
     newsItems: newsItems,
+    /* Resolve { ok, items } com os títulos de Novidades na ordem final. */
+    recentTitles: function (xt, movieCategories, seriesCategories) {
+      var movieNames = categoryNames(movieCategories), seriesNames = categoryNames(seriesCategories);
+      return Catalog.rawList(xt, 'movies').then(function (raw) {
+        if (raw === null) return { ok: false, items: [] };
+        var movies = toItems('movies', xt, raw, newestMovieSpans(raw, movieNames, RECENT_WANTED), movieNames);
+        raw = null;
+        if (movies.length >= RECENT_WANTED) return { ok: true, items: movies };
+        return Catalog.rawList(xt, 'series').then(function (seriesRaw) {
+          if (seriesRaw === null) return { ok: true, items: movies };
+          return { ok: true, items: movies.concat(toItems('series', xt, seriesRaw, firstSeriesSpans(seriesRaw, seriesNames, RECENT_WANTED - movies.length), seriesNames)) };
+        });
+      }, function () { return { ok: false, items: [] }; });
+    },
     load: function (playlist) {
       if (!playlist || !playlist.credentials) return Promise.reject(new Error('A lista vinculada ainda não possui uma fonte compatível.'));
       if (playlist.sourceType !== 'xtream') {
