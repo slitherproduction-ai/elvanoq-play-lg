@@ -166,7 +166,10 @@
       // Novidades: na lista Xtream, só a semente (lançamentos), sem os salvos.
       // Na M3U (inclusive a lista do Portal que voltou para o M3U), o grupo de
       // lançamentos; sem ele, a lista toda pela data de inclusão.
-      if (this.lazy) base.recent = this.filterVisible(this.catalog || []);
+      // Lista Xtream: a regra do Android (filmes mais novos do catálogo inteiro),
+      // assim que ficar pronta; até lá, a semente de lançamentos.
+      if (this.lazy && this.recentTitles) { base.recent = this.filterVisible(this.recentTitles); base.recentOrdered = true; }
+      else if (this.lazy) base.recent = this.filterVisible(this.catalog || []);
       else base.recent = this.filterVisible(EP.CatalogService.newsItems(this.catalog || []));
     }
     if (index === SETTINGS) {
@@ -421,10 +424,28 @@
     this.catalogVersion = (this.catalogVersion || 0) + 1;
     this.catalogPlaylist = playlist;
     this.catalogLoadedAt = new Date().getTime();
+    this.loadRecentTitles();
     EP.Perf.recordSync('catalog', started, this.lazy ? this.allCategoryNames().length : (this.catalog || []).length);
     EP.Perf.markReady();
     var sample = this.xtream ? this.xtream.host : (this.catalog && this.catalog.length ? this.catalog[0].stream_url : '');
     preconnect(sample);
+  };
+
+  /* Novidades para você (regra do Android): mostra na hora a última lista
+   * guardada desta lista Xtream e atualiza em segundo plano. */
+  var RECENT_KEY = 'elvanoq.recentTitles.';
+  AppShell.prototype.loadRecentTitles = function () {
+    var self = this, xt = this.xtream, version = this.catalogVersion;
+    this.recentTitles = null;
+    if (!this.lazy || !xt) return;
+    var key = RECENT_KEY + xt.host + '|' + xt.username;
+    try { var saved = JSON.parse(window.localStorage.getItem(key) || 'null'); if (saved && saved.length) this.recentTitles = saved; } catch (_) {}
+    EP.CatalogService.recentTitles(xt, this.movieCategories, this.seriesCategories).then(function (result) {
+      if (version !== self.catalogVersion || !result.ok || !result.items.length) return;
+      self.recentTitles = result.items;
+      try { window.localStorage.setItem(key, JSON.stringify(result.items)); } catch (_) {}
+      self.views[HOME].setRecentTitles(self.filterVisible(result.items));
+    });
   };
 
   /* Pré-conexão (1.1.7): DNS e conexão com o servidor dos vídeos prontos
