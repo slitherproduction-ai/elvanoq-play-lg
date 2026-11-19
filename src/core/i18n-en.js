@@ -1405,6 +1405,11 @@
     "A lista recusou o usuário e a senha. Confira os dados da lista ou fale com a sua revenda.": "The list rejected the username and password. Check the list details or contact your reseller.",
     "O servidor recusou o acesso (HTTP {0}). Confira o usuário e a senha da lista ou fale com a sua revenda.": "The server refused access (HTTP {0}). Check the list username and password or contact your reseller.",
     "O servidor da lista está fora do ar ou sobrecarregado (HTTP {0}). Tente novamente em alguns minutos.": "The list server is down or overloaded (HTTP {0}). Try again in a few minutes.",
-    "O servidor respondeu algo que não é uma lista. Confira o endereço do servidor.": "The server answered with something that is not a list. Check the server address."
+    "O servidor respondeu algo que não é uma lista. Confira o endereço do servidor.": "The server answered with something that is not a list. Check the server address.",
+    "Juntar qualidades": "Group qualities",
+    "OK liga ou desliga": "OK turns it on or off",
+    "FHD, HD e SD do mesmo canal numa linha só, com o botão Fonte no player. Desligue se algum canal for agrupado errado: cada canal da lista volta a ter a sua linha.": "FHD, HD and SD of the same channel in one row, with the Source button in the player. Turn off if some channel is grouped wrongly: each channel of the list gets its own row again.",
+    "Qualidades do mesmo canal numa linha.": "Qualities of the same channel in one row.",
+    "Cada canal da lista numa linha.": "Each channel of the list in its own row."
   };
 }(window.EP = window.EP || {}));
