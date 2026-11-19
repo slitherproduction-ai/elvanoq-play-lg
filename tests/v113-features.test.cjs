@@ -7,6 +7,7 @@ global.document = { visibilityState: 'visible' };
 global.EP = { Stage: { isVisible: (n) => !!n.visible } };
 const SRC = '../src';
 require(SRC + '/core/ns.js');
+require(SRC + '/core/channelGroups.js');
 require(SRC + '/views/playerView.js');
 require(SRC + '/views/liveTVView.js');
 

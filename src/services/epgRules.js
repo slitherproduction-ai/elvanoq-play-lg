@@ -5,6 +5,8 @@
 (function (root) {
   'use strict';
   var MAX_TOTAL = 6000, PER_CHANNEL = 6;
+  // Hora do servidor quando o relógio da TV está errado (EP.Clock).
+  function nowSecond() { var c = root.EP && root.EP.Clock; return Math.floor((c ? c.now() : Date.now()) / 1000); }
 
   function xmltvSeconds(value) {
     if (!value || value.length < 14) return 0;
@@ -41,7 +43,7 @@
   }
 
   function parseXmltv(body, nowSec) {
-    nowSec = nowSec || Math.floor(Date.now() / 1000);
+    nowSec = nowSec || nowSecond();
     var entries = {}, total = 0;
     var re = /<programme\b([^>]*)>([\s\S]*?)<\/programme>/g, match;
     while ((match = re.exec(body)) && total < MAX_TOTAL) {
@@ -77,7 +79,7 @@
   /* get_short_epg (Xtream): títulos em base64, horários em epoch. O "start"
    * fica em horário local, que é como o Roku exibe HH:MM. */
   function parseShortEpg(body, nowSec) {
-    nowSec = nowSec || Math.floor(Date.now() / 1000);
+    nowSec = nowSec || nowSecond();
     var list = (body && body.epg_listings) || [], out = [];
     for (var i = 0; i < list.length; i++) {
       var p = list[i];
@@ -104,7 +106,7 @@
 
   function progress(programme, nowSec) {
     if (!programme || !programme.startSec || !programme.stopSec) return 0;
-    nowSec = nowSec || Math.floor(Date.now() / 1000);
+    nowSec = nowSec || nowSecond();
     var value = (nowSec - programme.startSec) / (programme.stopSec - programme.startSec);
     return Math.max(0, Math.min(1, value));
   }

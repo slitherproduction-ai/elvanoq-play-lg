@@ -111,6 +111,23 @@
     return new Error(error && error.message === 'timeout' ? 'O servidor da lista demorou para responder.' : fallback);
   }
 
+  /* Motivo de a lista não abrir (Android 2.17.75, listAccess.ts): vencida,
+   * bloqueada ou usuário recusado, com o que fazer. */
+  function accountProblem(info) {
+    var status = EP.lower(info.status || '');
+    if (status === 'expired') {
+      var seconds = Number(info.exp_date), until = '';
+      if (isFinite(seconds) && seconds > 0) {
+        var d = new Date(seconds * 1000), p = function (n) { return (n < 10 ? '0' : '') + n; };
+        until = EP.I18n && EP.I18n.language() === 'en' ? (d.getMonth() + 1) + '/' + d.getDate() + '/' + d.getFullYear() : p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear();
+      }
+      return until ? 'A lista venceu em ' + until + '. Fale com a sua revenda para renovar.' : 'A lista venceu. Fale com a sua revenda para renovar.';
+    }
+    if (status === 'banned' || status === 'disabled' || status === 'blocked') return 'A lista está bloqueada no servidor. Fale com a sua revenda.';
+    if (String(info.auth) !== '1') return 'A lista recusou o usuário e a senha. Confira os dados da lista ou fale com a sua revenda.';
+    return '';
+  }
+
   function apiUrl(xt, action, extra) { return R().buildXtreamApiUrl(xt.host, xt.username, xt.password, action, extra); }
 
   function getJson(url, timeout) {
@@ -137,9 +154,15 @@
     var c = playlist.credentials;
     var xt = { host: String(c.host).replace(/\/+$/, ''), username: c.username, password: c.password, liveExtension: 'ts' };
     return EP.Http.get(apiUrl(xt, ''), 30000).then(function (response) {
+      var status = response.status;
+      if (status === 401 || status === 403) throw new Error('O servidor recusou o acesso (HTTP ' + status + '). Confira o usuário e a senha da lista ou fale com a sua revenda.');
+      if (status >= 500) throw new Error('O servidor da lista está fora do ar ou sobrecarregado (HTTP ' + status + '). Tente novamente em alguns minutos.');
       var account = EP.Http.json(response);
-      if (!account || !account.user_info) throw new Error('Não foi possível conectar ao servidor da lista.');
-      if (String(account.user_info.auth) !== '1') throw new Error('Usuário ou senha da lista recusados pelo servidor.');
+      if (!account || typeof account !== 'object') throw new Error('O servidor respondeu algo que não é uma lista. Confira o endereço do servidor.');
+      if (!account.user_info) throw new Error('Não foi possível conectar ao servidor da lista.');
+      if (EP.Clock && account.server_info) EP.Clock.noteTimestamp(account.server_info.timestamp_now);
+      var problem = accountProblem(account.user_info);
+      if (problem) throw new Error(problem);
       var formats = account.user_info.allowed_output_formats || [];
       for (var i = 0; i < formats.length; i++) if (EP.lower(formats[i]) === 'm3u8') xt.liveExtension = 'm3u8';
       return Promise.all([

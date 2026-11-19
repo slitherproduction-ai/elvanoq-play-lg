@@ -45,7 +45,7 @@
     this.categorySearch = searchField(root, 76, 426, 'Pesquisar categoria', function () { self.focusSearch('categories'); self.events.emit('searchRequested', { column: 'categories' }); });
     this.channelSearch = searchField(root, 546, 666, 'Pesquisar canais', function () { self.focusSearch('channels'); self.events.emit('searchRequested', { column: 'channels' }); });
     this.channelFocus = S.el(root, { x: 546, y: ROW_Y, w: 666, h: 46, css: 'border-radius:12px;background:#147dff' });
-    this.catLabels = []; this.chLabels = []; this.logos = []; this.hearts = [];
+    this.catLabels = []; this.chLabels = []; this.logos = []; this.hearts = []; this.sourceLabels = [];
     for (var i = 0; i < ROWS; i++) {
       var y = ROW_Y + i * STRIDE;
       var cat = S.label(root, { x: 92, y: y + 6, w: 394, h: 34, size: 22, color: '0x8894A8FF' });
@@ -53,6 +53,8 @@
       var heart = S.el(root, { x: 606, y: y + 11, w: 24, h: 24, visible: false, css: 'color:#ff5c72' });
       heart.appendChild(EP.icon('heart', 24));
       var ch = S.label(root, { x: 640, y: y + 6, w: 560, h: 34, size: 22, weight: 500 });
+      // "N fontes": qualidades do mesmo canal numa linha (EP.ChannelGroups).
+      var sources = S.label(root, { x: 1060, y: y + 10, w: 140, h: 28, size: 18, weight: 600, align: 'right', color: '0x9AA6BDFF', visible: false });
       (function (row) {
         cat.addEventListener('click', function () { self.focusColumn = 'categories'; self.moveCategory(self.categoryOffset + row - self.selectedCategoryIndex); self.updateFocus(); });
         ch.addEventListener('click', function () {
@@ -63,7 +65,7 @@
           if (again) self.openSelected(); else self.playSelected();
         });
       }(i));
-      this.catLabels.push(cat); this.chLabels.push(ch); this.logos.push(logo); this.hearts.push(heart);
+      this.catLabels.push(cat); this.chLabels.push(ch); this.logos.push(logo); this.hearts.push(heart); this.sourceLabels.push(sources);
     }
     this.emptyState = S.label(root, { x: 562, y: 600, w: 634, h: 60, size: 20, lineHeight: 30, wrap: true, align: 'center', color: '0x8894A8FF', visible: false });
 
@@ -240,7 +242,7 @@
       else if (this.categories[this.selectedCategoryIndex] === 'Favoritos') text = 'Nenhum favorito ainda. Aperte ' + EP.OPTIONS_LABEL + ' em um canal para favoritar.';
       this.emptyState.textContent = text;
       S.show(this.emptyState, true);
-      for (i = 0; i < ROWS; i++) { this.chLabels[i].textContent = ''; S.show(this.logos[i], false); S.show(this.hearts[i], false); }
+      for (i = 0; i < ROWS; i++) { this.chLabels[i].textContent = ''; S.show(this.logos[i], false); S.show(this.hearts[i], false); S.show(this.sourceLabels[i], false); }
       if (!this.previewing) { this.previewTitle.textContent = ''; this.epgNow.textContent = ''; this.epgNext.textContent = ''; this.epgProgress.style.width = '0'; }
       this.updateFocus();
       return;
@@ -248,8 +250,12 @@
     S.show(this.emptyState, false);
     for (i = 0; i < ROWS; i++) {
       var ch = this.visibleChannels[this.channelOffset + i];
-      this.chLabels[i].textContent = ch ? EP.displayTitle(ch.title) : '';
-      S.show(this.hearts[i], !!ch && this.isFavorite(ch.id));
+      this.chLabels[i].textContent = ch ? EP.displayTitle(ch.group_title || ch.title) : '';
+      var many = !!(ch && ch.sources);
+      this.chLabels[i].style.width = (many ? 410 : 560) + 'px';
+      this.sourceLabels[i].textContent = many ? ch.sources.length + ' fontes' : '';
+      S.show(this.sourceLabels[i], many);
+      S.show(this.hearts[i], !!ch && this.isRowFavorite(ch));
       if (ch && ch.logo) { S.setPoster(this.logos[i], ch.logo); S.show(this.logos[i], true); } else S.show(this.logos[i], false);
     }
     this.updateSelection();
@@ -377,7 +383,7 @@
   LiveTVView.prototype.filterChannels = function (keepSelection) {
     var q = lower(this.channelQuery), source = this.categoryChannels;
     var current = keepSelection ? this.visibleChannels[this.selectedIndex] : null;
-    if (!q) this.visibleChannels = source.slice();
+    if (!q) this.visibleChannels = EP.ChannelGroups.group(source.slice());
     else {
       var out = [];
       for (var i = 0; i < source.length; i++) {
@@ -386,10 +392,10 @@
         var now = this.epg && this.epg.guideFor(ch).now;
         if (now && lower(now.title).indexOf(q) >= 0) out.push(ch);
       }
-      this.visibleChannels = out;
+      this.visibleChannels = EP.ChannelGroups.group(out);
     }
     var index = 0;
-    if (current) for (var j = 0; j < this.visibleChannels.length; j++) if (this.visibleChannels[j].id === current.id) { index = j; break; }
+    if (current) for (var j = 0; j < this.visibleChannels.length; j++) if (EP.ChannelGroups.matches(this.visibleChannels[j], current.id)) { index = j; break; }
     this.selectedIndex = index;
     this.channelOffset = index >= ROWS ? index - (ROWS - 1) : 0;
   };
@@ -424,7 +430,7 @@
     this.updateFocus();
     if (!this.visibleChannels.length) return;
     var self = this, selected = this.visibleChannels[this.selectedIndex];
-    this.previewTitle.textContent = EP.displayTitle(selected.title);
+    this.previewTitle.textContent = EP.displayTitle(selected.group_title || selected.title);
     if (!this.previewing) this.previewHint.textContent = '→ prévia   •   OK tela cheia   •   ' + EP.OPTIONS_LABEL + (selected.archive_days > 0 ? ' opções e rever programas' : ' favorito');
     var guide = this.epg.guideFor(selected);
     if (guide.now) {
@@ -487,7 +493,7 @@
   LiveTVView.prototype.returnToChannel = function (id) {
     if (!id) return false;
     for (var i = 0; i < this.visibleChannels.length; i++) {
-      if (this.visibleChannels[i].id !== id) continue;
+      if (!EP.ChannelGroups.matches(this.visibleChannels[i], id)) continue;
       this.selectedIndex = i;
       if (i < this.channelOffset || i >= this.channelOffset + ROWS) this.channelOffset = Math.max(0, i - Math.floor(ROWS / 2));
       this.searchFocus = '';
@@ -502,6 +508,14 @@
   LiveTVView.prototype.toggleFavorite = function () {
     if (!this.visibleChannels.length) return;
     var selected = this.visibleChannels[this.selectedIndex];
+    // Linha agrupada: favorita se alguma fonte for; desmarcar tira todas.
+    if (selected.sources && this.isRowFavorite(selected)) {
+      for (var s = 0; s < selected.sources.length; s++) if (this.isFavorite(selected.sources[s].id)) LS.toggle('favorites', selected.sources[s]);
+      this.localState = LS.load();
+      this.renderGuide();
+      return;
+    }
+    if (selected.sources) selected = selected.sources[0];
     var added = LS.toggle('favorites', selected);
     this.localState = LS.load();
     if (this.lazy && added && !EP.find(this.favoriteChannels, function (c) { return c.id === selected.id; })) this.favoriteChannels.push(selected);
@@ -509,6 +523,12 @@
   };
 
   LiveTVView.prototype.isFavorite = function (id) { return LS.contains(this.localState.favorites, id); };
+
+  LiveTVView.prototype.isRowFavorite = function (row) {
+    if (!row.sources) return this.isFavorite(row.id);
+    for (var i = 0; i < row.sources.length; i++) if (this.isFavorite(row.sources[i].id)) return true;
+    return false;
+  };
 
   /* Descarrega o decodificador: na LG só há um pipeline de vídeo confiável. */
   LiveTVView.prototype.stopPreview = function () {

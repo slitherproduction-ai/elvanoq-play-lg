@@ -45,7 +45,7 @@
   function archiveProgrammes(body, archiveDays, now) {
     var list = body && body.epg_listings, out = [];
     if (!list || list.length === undefined) return out;
-    now = now || Date.now();
+    now = now || (root.EP && root.EP.Clock ? root.EP.Clock.now() : Date.now());
     var oldest = now - Math.max(1, archiveDays || 1) * 86400000;
     for (var i = 0; i < list.length; i++) {
       var e = list[i];
