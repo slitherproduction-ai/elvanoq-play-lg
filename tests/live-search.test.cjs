@@ -7,6 +7,7 @@ global.EP = {
   text: (v) => (v == null ? '' : String(v)),
   displayTitle: (t) => String(t || '')
 };
+require('../src/core/channelGroups.js');
 require('../src/views/liveTVView.js');
 const V = EP.LiveTVView.prototype;
 

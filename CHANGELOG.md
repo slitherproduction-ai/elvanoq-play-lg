@@ -1,5 +1,9 @@
 # 1.2.1 — 2026-11-18
 
+- **Qualidades do mesmo canal numa linha** (19/11; Android 2.17.75): na TV ao Vivo, canais da mesma categoria cujo nome, sem as marcas de qualidade (4K, FHD, HD, SD, H265, ALT, Backup, Opção N, ᴴᴰ…), é igual viram uma linha com o nome limpo e "N fontes" à direita (`src/core/channelGroups.js`). Coração vale para o grupo. No player, o 6º botão "Fonte" (só ao vivo com mais de uma fonte) mostra "FHD 1/3" e troca de fonte; se a fonte não abre nos dois formatos, a próxima é tentada sozinha. ▲/▼ trocam de canal, não de qualidade.
+- **Erros da lista com motivo:** lista vencida (com a data), bloqueada, usuário recusado, HTTP 401/403, servidor fora do ar (5xx) e resposta que não é uma lista, cada um com o que fazer.
+- **Hora do servidor no guia** (`src/core/serverClock.js`): com o relógio da TV errado, o guia e o Rever usam a hora do servidor (cabeçalho `Date` de duas respostas que concordam ou `timestamp_now` da conta; só a partir de 2 min).
+- Novo teste `tests/sources-clock.test.cjs`.
 - **Novidades para você igual ao Android** (`recentTitles` do Android): nas listas Xtream, a fileira passa a mostrar os filmes adicionados mais recentemente no **catálogo inteiro** (data `added` do servidor), e não mais só os primeiros 150 da categoria de lançamentos. A Início abre como antes (com a última lista de Novidades guardada desta lista, ou a semente de lançamentos na primeira vez) e, em segundo plano, lê a lista completa de filmes (o mesmo download da Busca), separa os 60 mais novos sem converter o resto e troca só a fileira, sem mexer no destaque nem no foco. Versões do mesmo título agrupadas; mostra 30. Séries só completam quando a lista tem menos de 60 filmes, na ordem do servidor (como no Android). Categorias adultas ficam de fora. Lista M3U sem mudança.
 - Novo teste `tests/recent-titles.test.cjs`.
 

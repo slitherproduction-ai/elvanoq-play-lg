@@ -90,6 +90,8 @@
       self.scheduleCatalogRefresh();
     });
     p.events.on('channelRequested', function (r) { self.playLiveItem(r.item, p.content.liveQueue, r.index); });
+    // Outra fonte do mesmo canal (botão Fonte ou troca automática quando não abre).
+    p.events.on('sourceRequested', function (r) { self.playLiveItem(r.item, p.content.liveQueue, p.content.liveIndex, false, r.tried); });
     p.events.on('favoriteRequested', function (r) {
       var item = self.resolveCatalogItem(r);
       if (item) LS.toggle('favorites', item);
@@ -617,11 +619,15 @@
     this.startPlayback({ streamUrl: item.stream_url, id: item.id, title: EP.displayTitle(item.title), category: item.category, resumePosition: resume || 0, persistEnabled: true, skipIntroEnd: 0, nextEpisode: null, liveQueue: [], saved: savedRef(item), cover: item.backdrop || item.logo || '' });
   };
 
-  AppShell.prototype.playLiveItem = function (item, channels, index, adoptPreview) {
+  AppShell.prototype.playLiveItem = function (item, channels, index, adoptPreview, triedSources) {
     if (!item || !item.stream_url) return;
     var self = this;
     this.clearEpisodeQueue();
     var content = { adoptPreview: !!adoptPreview, streamUrl: item.stream_url, id: item.id, title: EP.displayTitle(item.title), category: item.category, resumePosition: 0, persistEnabled: false, skipIntroEnd: 0, nextEpisode: null, liveQueue: channels, liveIndex: index, liveGuide: this.epg.guideFor(item), logo: item.logo };
+    // Fontes do mesmo canal (EP.ChannelGroups): a linha da lista as carrega.
+    var row = channels && channels[index];
+    content.sources = item.sources || (row && EP.ChannelGroups.matches(row, item.id) ? row.sources : null) || null;
+    content.triedSources = triedSources || {};
     this.startPlayback(content);
     if (!content.liveGuide.now) this.epg.request(item, function () { if (self.playerView.content === content) self.playerView.setLiveGuide(self.epg.guideFor(item)); });
     var state = LS.load();

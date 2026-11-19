@@ -69,14 +69,16 @@
     this.trackStatus = S.label(osd, { x: 856, y: 914, w: 1000, h: 30, size: 20, align: 'right', color: '0x8894A8FF' });
     this.trackPanelTitle = document.createElement('span');
     this.trackPanelValue = document.createElement('span');
-    var defs = ['-10s', 'Pausar', '+10s', 'Áudio', 'Legendas'];
+    var defs = ['-10s', 'Pausar', '+10s', 'Áudio', 'Legendas', 'Fonte'];
     this.controlLabels = [];
-    for (var i = 0; i < 5; i++) {
+    // 6º controle (só ao vivo com mais de uma fonte): troca de qualidade/fonte.
+    for (var i = 0; i < 6; i++) {
       var control = S.el(osd, { x: 64 + i * 176, y: 958, w: 160, h: 56, className: 'osd-control' });
       S.setButton(control, '', defs[i]);
       (function (index) { control.addEventListener('click', function () { self.selectedControl = index; self.updateControlFocus(); self.runSelectedControl(); }); }(i));
       this.controlLabels.push(control);
     }
+    S.show(this.controlLabels[5], false);
     this.controls = S.label(osd, { x: 1256, y: 972, w: 600, h: 30, text: '←/→ selecionar   •   OK confirmar', size: 20, align: 'right', color: '0x8894A8FF' });
     this.backLabel.addEventListener('click', function () { self.handleKey('back'); });
     this.nextPanel = S.group(root, { className: 'layer', visible: false });
@@ -229,7 +231,7 @@
     this.userPaused = false;
     this.lastGoodPosition = content.resumePosition || 0;
     this.retryTimer.stop();
-    this.selectedControl = 1; this.updateControlFocus();
+    this.selectedControl = 1; this.renderSourceControl(); this.updateControlFocus();
     if (P.isBlockedItem(content.category, content.id)) {
       this.stopVideo();
       this.hint.textContent = 'Conteúdo protegido. Valide o PIN em Ajustes para assistir.';
@@ -340,6 +342,18 @@
       }
       this.showFatal('Este programa não está disponível para rever.');
       return;
+    }
+    // Canal que nunca abriu, já tentado nos dois formatos: próxima fonte do mesmo canal.
+    if (this.hasSources() && !this.hasStarted && this.liveRetries >= 1) {
+      var tried = this.content.triedSources || {};
+      tried[this.content.id] = true;
+      var next = EP.ChannelGroups.nextUntried(this.content.sources, this.content.id, tried);
+      if (next) {
+        this.hint.textContent = 'Esta fonte não abriu. Tentando outra fonte…';
+        this.showOsd();
+        this.events.emit('sourceRequested', { item: next, tried: tried });
+        return;
+      }
     }
     if (this.isLive() && this.liveRetries < 3) {
       this.liveRetries++;
@@ -501,7 +515,7 @@
       return true;
     }
     if (key === 'left') { if (this.selectedControl > 0) this.selectedControl--; this.updateControlFocus(); this.showOsd(); return true; }
-    if (key === 'right') { if (this.selectedControl < 4) this.selectedControl++; this.updateControlFocus(); this.showOsd(); return true; }
+    if (key === 'right') { if (this.selectedControl < this.lastControl()) this.selectedControl++; this.updateControlFocus(); this.showOsd(); return true; }
     if ((key === 'up' || key === 'channelUp') && this.isLive()) { this.switchLiveChannel(-1); return true; }
     if ((key === 'down' || key === 'channelDown') && this.isLive()) { this.switchLiveChannel(1); return true; }
     if (key === 'options' && this.skipIntroAvailable && this.video.currentTime < this.content.skipIntroEnd) {
@@ -612,7 +626,7 @@
     this.seekFocus = !!focused;
     if (this.timeline.classList) this.timeline.classList.toggle('focused', this.seekFocus);
     S.show(this.timelineKnob, this.seekFocus);
-    for (var i = 0; i < 5; i++) S.focus(this.controlLabels[i], !this.seekFocus && i === this.selectedControl);
+    for (var i = 0; i < this.controlLabels.length; i++) S.focus(this.controlLabels[i], !this.seekFocus && i === this.selectedControl);
     this.refreshControlsHint();
   };
 
@@ -622,8 +636,32 @@
       : '←/→ selecionar   •   OK confirmar';
   };
 
+  PlayerView.prototype.hasSources = function () {
+    var c = this.content;
+    return !!(c && this.isLive() && !this.isCatchup() && c.sources && c.sources.length > 1);
+  };
+
+  PlayerView.prototype.lastControl = function () { return this.hasSources() ? 5 : 4; };
+
+  /* Botão Fonte: "FHD 1/3" (qualidade da fonte atual e posição). */
+  PlayerView.prototype.renderSourceControl = function () {
+    var many = this.hasSources();
+    S.show(this.controlLabels[5], many);
+    if (!many) { if (this.selectedControl > 4) this.selectedControl = 4; return; }
+    var sources = this.content.sources, labels = EP.ChannelGroups.sourceLabels(sources), index = 0;
+    for (var i = 0; i < sources.length; i++) if (sources[i].id === this.content.id) { index = i; break; }
+    S.setButton(this.controlLabels[5], '', labels[index] + ' ' + (index + 1) + '/' + sources.length);
+  };
+
+  PlayerView.prototype.cycleSource = function () {
+    if (!this.hasSources()) return;
+    var sources = this.content.sources, index = 0;
+    for (var i = 0; i < sources.length; i++) if (sources[i].id === this.content.id) { index = i; break; }
+    this.events.emit('sourceRequested', { item: sources[(index + 1) % sources.length], tried: {} });
+  };
+
   PlayerView.prototype.updateControlFocus = function () {
-    for (var i = 0; i < 5; i++) S.focus(this.controlLabels[i], !this.seekFocus && i === this.selectedControl);
+    for (var i = 0; i < this.controlLabels.length; i++) S.focus(this.controlLabels[i], !this.seekFocus && i === this.selectedControl);
     this.refreshTrackStatus();
   };
 
@@ -634,6 +672,7 @@
     else if (c === 2) this.seekBy(10);
     else if (c === 3) this.cycleAudioTrack();
     else if (c === 4) this.cycleSubtitleTrack();
+    else if (c === 5) this.cycleSource();
     this.showOsd();
   };
 

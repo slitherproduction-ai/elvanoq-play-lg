@@ -1394,6 +1394,17 @@
     "→ prévia • OK tela cheia • {0} favorito": "→ preview • OK full screen • {0} favorite",
     "↓ para escolher um episódio": "↓ to choose an episode",
     "↓ ver episódios": "↓ see episodes",
-    "◀ voltar ▶ avançar (segure apertando para ir mais rápido)": "◀ back ▶ forward (keep pressing to go faster)"
+    "◀ voltar ▶ avançar (segure apertando para ir mais rápido)": "◀ back ▶ forward (keep pressing to go faster)",
+    "{0} fontes": "{0} sources",
+    "Fonte {0}": "Source {0}",
+    "Fonte": "Source",
+    "Esta fonte não abriu. Tentando outra fonte…": "This source did not open. Trying another source…",
+    "A lista venceu em {0}. Fale com a sua revenda para renovar.": "The list expired on {0}. Contact your reseller to renew it.",
+    "A lista venceu. Fale com a sua revenda para renovar.": "The list has expired. Contact your reseller to renew it.",
+    "A lista está bloqueada no servidor. Fale com a sua revenda.": "The list is blocked on the server. Contact your reseller.",
+    "A lista recusou o usuário e a senha. Confira os dados da lista ou fale com a sua revenda.": "The list rejected the username and password. Check the list details or contact your reseller.",
+    "O servidor recusou o acesso (HTTP {0}). Confira o usuário e a senha da lista ou fale com a sua revenda.": "The server refused access (HTTP {0}). Check the list username and password or contact your reseller.",
+    "O servidor da lista está fora do ar ou sobrecarregado (HTTP {0}). Tente novamente em alguns minutos.": "The list server is down or overloaded (HTTP {0}). Try again in a few minutes.",
+    "O servidor respondeu algo que não é uma lista. Confira o endereço do servidor.": "The server answered with something that is not a list. Check the server address."
   };
 }(window.EP = window.EP || {}));

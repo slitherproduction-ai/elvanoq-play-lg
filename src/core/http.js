@@ -14,6 +14,8 @@
       for (var name in headers) if (Object.prototype.hasOwnProperty.call(headers, name)) xhr.setRequestHeader(name, headers[name]);
       xhr.onload = function () {
         if (done) return; done = true;
+        // Hora do servidor para o guia (relógio da TV errado): EP.Clock.
+        try { if (EP.Clock) EP.Clock.noteDate(xhr.getResponseHeader('Date')); } catch (_) {}
         resolve({ status: xhr.status, text: xhr.responseText || '', header: function (h) { try { return xhr.getResponseHeader(h); } catch (_) { return null; } } });
       };
       xhr.onerror = function () { if (done) return; done = true; reject(new Error('network')); };
