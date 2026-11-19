@@ -128,6 +128,14 @@
     return '';
   }
 
+  /* Sem resposta do servidor da lista: o motivo provável (EP.ConnectionDiagnosis). */
+  function explainFailure(url, error, fallback) {
+    if (!EP.ConnectionDiagnosis) return Promise.reject(fail(error, fallback));
+    return EP.ConnectionDiagnosis.explain(url, error).then(function (message) {
+      throw new Error(message || fail(error, fallback).message);
+    });
+  }
+
   function apiUrl(xt, action, extra) { return R().buildXtreamApiUrl(xt.host, xt.username, xt.password, action, extra); }
 
   function getJson(url, timeout) {
@@ -147,7 +155,7 @@
       if (!parsed.items.length) throw new Error('A lista M3U não tem canais ou está num formato não reconhecido.');
       var epgUrl = playlist.epgUrl || parsed.epgUrl || '';
       return { ok: true, lazy: false, channels: parsed.items, categories: parsed.categories, epg: epgUrl ? { kind: 'xmltv', url: epgUrl } : null };
-    }, function (error) { throw fail(error, 'Não foi possível carregar a lista M3U.'); });
+    }, function (error) { return explainFailure(playlist.credentials.url, error, 'Não foi possível carregar a lista M3U.'); });
   }
 
   function loadXtream(playlist) {
@@ -168,7 +176,7 @@
       return Promise.all([
         getJson(apiUrl(xt, 'get_live_categories')), getJson(apiUrl(xt, 'get_vod_categories')), getJson(apiUrl(xt, 'get_series_categories'))
       ]);
-    }, function (error) { throw fail(error, 'Não foi possível conectar ao servidor da lista.'); }).then(function (lists) {
+    }, function (error) { return explainFailure(xt.host, error, 'Não foi possível conectar ao servidor da lista.'); }).then(function (lists) {
       var rules = R();
       var live = rules.xtreamCategoryList(lists[0]), movies = rules.xtreamCategoryList(lists[1]), series = rules.xtreamCategoryList(lists[2]);
       if (!live.length && !movies.length && !series.length) throw new Error('O servidor não retornou categorias.');
