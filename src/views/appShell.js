@@ -777,7 +777,14 @@
         EP.Http.get(EP.PlaylistRules.buildXtreamApiUrl(x.host, x.username, x.password, '', {}), 12000).then(function (r) {
           tested.server = r.status >= 200 && r.status < 300 ? 'Respondeu • ' + (Date.now() - t1) + ' ms' : 'Erro ' + r.status;
           finish();
-        }, function () { tested.server = 'Não respondeu'; finish(); });
+        }, function (error) {
+          // Sem resposta: diz se é bloqueio, endereço errado, servidor fora do ar ou sem internet.
+          EP.ConnectionDiagnosis.explain(x.host, error).then(function () {
+            var last = EP.ConnectionDiagnosis.last();
+            tested.server = 'Não respondeu' + (last ? ' • ' + EP.ConnectionDiagnosis.label(last.verdict) : '');
+            finish();
+          });
+        });
       }
     };
   };

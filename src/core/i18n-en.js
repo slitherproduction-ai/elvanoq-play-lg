@@ -1410,6 +1410,15 @@
     "OK liga ou desliga": "OK turns it on or off",
     "FHD, HD e SD do mesmo canal numa linha só, com o botão Fonte no player. Desligue se algum canal for agrupado errado: cada canal da lista volta a ter a sua linha.": "FHD, HD and SD of the same channel in one row, with the Source button in the player. Turn off if some channel is grouped wrongly: each channel of the list gets its own row again.",
     "Qualidades do mesmo canal numa linha.": "Qualities of the same channel in one row.",
-    "Cada canal da lista numa linha.": "Each channel of the list in its own row."
+    "Cada canal da lista numa linha.": "Each channel of the list in its own row.",
+    "Esta TV não conseguiu conectar ao servidor da lista, mas o endereço existe. Pode ser bloqueio da operadora (DNS) ou o servidor fora do ar. Troque o DNS da TV ou do roteador (por exemplo 1.1.1.1 ou 8.8.8.8); se não resolver, fale com a sua revenda.": "This TV could not connect to the list server, but the address exists. It may be blocked by your provider (DNS) or the server may be down. Change the DNS on the TV or router (for example 1.1.1.1 or 8.8.8.8); if that does not help, contact your reseller.",
+    "O endereço do servidor da lista não existe. Confira o endereço com a sua revenda.": "The list server address does not exist. Check the address with your reseller.",
+    "O servidor da lista não respondeu. Ele pode estar fora do ar ou bloqueado pela operadora. Tente mais tarde ou fale com a sua revenda.": "The list server did not respond. It may be down or blocked by your provider. Try again later or contact your reseller.",
+    "Esta TV está sem internet. Confira o Wi-Fi ou o cabo e tente de novo.": "This TV has no internet. Check the Wi-Fi or cable and try again.",
+    "Bloqueio provável (DNS ou operadora)": "Probable block (DNS or provider)",
+    "Endereço não existe": "Address does not exist",
+    "Servidor não responde": "Server not responding",
+    "Sem internet": "No internet",
+    "Não respondeu • {0}": "No response • {0}"
   };
 }(window.EP = window.EP || {}));
