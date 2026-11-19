@@ -62,10 +62,17 @@
     return out;
   }
 
+  /* Ajustes › Juntar qualidades (ligado por padrão; Android 2.17.76). */
+  function enabled() {
+    try { return !EP.Registry || EP.Registry.read('join_qualities') !== '0'; } catch (_) { return true; }
+  }
+  function setEnabled(on) { if (EP.Registry) EP.Registry.write('join_qualities', on ? '1' : '0'); }
+
   /* Uma linha por canal, na posição da primeira fonte. A linha é uma cópia da
-   * 1ª fonte com group_title e sources (as fontes, ela incluída). */
+   * 1ª fonte com group_title e sources (as fontes, ela incluída). Desligado em
+   * Ajustes, cada canal da lista fica na sua linha (e o player sem "Fonte"). */
   function group(list) {
-    if (!list || list.length < 2) return list || [];
+    if (!list || list.length < 2 || !enabled()) return list || [];
     var groups = {}, order = [], merged = false, i;
     for (i = 0; i < list.length; i++) {
       var item = list[i], base = key(item.title);
@@ -110,5 +117,5 @@
     return null;
   }
 
-  EP.ChannelGroups = { key: key, label: label, groupName: groupName, sourceLabels: sourceLabels, group: group, matches: matches, nextUntried: nextUntried };
+  EP.ChannelGroups = { key: key, label: label, groupName: groupName, sourceLabels: sourceLabels, group: group, matches: matches, nextUntried: nextUntried, enabled: enabled, setEnabled: setEnabled };
 }(window.EP));

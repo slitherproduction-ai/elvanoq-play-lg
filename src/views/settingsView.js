@@ -24,12 +24,14 @@
   EP.premiumPage = premiumPage;
   EP.premiumGroupLabel = groupLabel;
 
+  var ROW_STEP = 72;
   var ROWS = [
     { group: 'Lista', id: 'sync', title: 'Sincronizar lista', sub: 'Busca no Portal a lista salva para esta TV', icon: 'refresh', detail: 'Atualiza a lista cadastrada no Portal ELVANOQ Play para esta TV. Use depois de trocar ou editar a lista no celular.' },
     { group: 'Lista', id: 'code', title: 'Entrar com código do servidor', sub: 'Código, usuário e senha do seu servidor', icon: 'key', detail: 'Conecta uma lista pelo código do servidor recebido no Portal. Usuário e senha ficam só na memória desta sessão.' },
     { group: 'Conteúdo', id: 'parental', title: 'Controle parental', sub: 'PIN, conteúdo adulto e bloqueios', icon: 'lock', detail: 'Crie um PIN e escolha as categorias e títulos protegidos. Categorias adultas são protegidas automaticamente.' },
     { group: 'Conteúdo', id: 'categories', title: 'Categorias visíveis', sub: 'Mostrar ou ocultar categorias desta lista', icon: 'grid', detail: 'Oculte categorias que você não usa. Elas somem das listas de categorias, de "Todos" e das grades. Vale só para a lista ativa.' },
     { group: 'Conteúdo', id: 'format', title: 'Formato do ao vivo', sub: 'OK alterna entre Automático, HLS e TS', icon: 'live', detail: 'No Automático, a TV lembra o formato que abriu nesta lista (HLS ou TS) e começa por ele nas próximas vezes e no zapping. Uma escolha manual sempre vence.' },
+    { group: 'Conteúdo', id: 'join', title: 'Juntar qualidades', sub: 'OK liga ou desliga', icon: 'tv', detail: 'FHD, HD e SD do mesmo canal numa linha só, com o botão Fonte no player. Desligue se algum canal for agrupado errado: cada canal da lista volta a ter a sua linha.' },
     { group: 'Sistema', id: 'language', title: 'Idioma', sub: 'Português, English ou Automático', icon: 'language', detail: 'Muda os textos do app. O áudio e as legendas dos vídeos continuam os da sua lista.' },
     { group: 'Sistema', id: 'account', title: 'Conta', sub: 'Excluir o login desta TV', icon: 'key', detail: 'Apaga os dados de acesso desta TV e volta para a tela de login.' },
     { group: 'Sistema', id: 'diagnostics', title: 'Diagnóstico', sub: 'Versão, lista, reprodução e conexão', icon: 'info', detail: 'Mostra o estado do aplicativo e testa a conexão com o Portal e com o servidor da lista. Nenhum endereço, usuário ou senha aparece aqui.' },
@@ -49,14 +51,14 @@
     for (var i = 0; i < ROWS.length; i++) {
       var def = ROWS[i];
       if (def.group !== lastGroup) { groupLabel(this.hub, 72, y, def.group); y += 30; lastGroup = def.group; }
-      var row = S.el(this.hub, { x: 64, y: y, w: 1100, h: 76, className: 'premium-row settings-row' });
+      var row = S.el(this.hub, { x: 64, y: y, w: 1100, h: ROW_STEP - 4, className: 'premium-row settings-row' });
       row.innerHTML = '<span class="pr-icon">' + EP.iconSvg(def.icon) + '</span><span class="pr-text"><span class="pr-title"></span><span class="pr-sub"></span></span><span class="pr-meta"></span><span class="pr-chev">' + EP.iconSvg('chevronRight') + '</span>';
       row.querySelector('.pr-title').textContent = def.title;
       row.querySelector('.pr-sub').textContent = def.sub;
       (function (index) { row.addEventListener('click', function () { self.selected = index; self.render(); self.activate(); }); }(i));
       this.rows.push(row);
-      // Nove linhas (com Idioma): passo de 80 px para caber acima do rodapé.
-      y += 80;
+      // Dez linhas (com Juntar qualidades): passo de 72 px para caber acima do rodapé.
+      y += ROW_STEP;
       if (i + 1 < ROWS.length && ROWS[i + 1].group !== def.group) y += 10;
     }
     S.el(this.hub, { x: 1204, y: 210, w: 652, h: 640, className: 'premium-card' });
@@ -116,6 +118,7 @@
     if (id === 'parental') return !EP.Parental.hasPin() ? 'Sem PIN' : (counts.protectedCount || 0) + ' protegidas';
     if (id === 'categories') { var n = EP.CategoryVisibility.hiddenCount(); return n ? n + (n === 1 ? ' oculta' : ' ocultas') : 'Todas visíveis'; }
     if (id === 'format') return EP.LiveFormat.LABELS[EP.LiveFormat.mode()];
+    if (id === 'join') return EP.ChannelGroups.enabled() ? 'Ligado' : 'Desligado';
     if (id === 'about') return 'Versão ' + EP.VERSION;
     if (id === 'language') { var lp = EP.I18n.preference(); return lp === 'en' ? 'English' : lp === 'pt' ? 'Português (Brasil)' : 'Automático'; }
     if (id === 'diagnostics') return '';
@@ -141,6 +144,14 @@
     if (id === 'language') { this.events.emit('action', 'language'); return; }
     if (id === 'sync') { this.setStatus('Buscando a lista salva no Portal…'); this.events.emit('action', 'sync'); return; }
     if (id === 'code') { this.events.emit('action', 'code'); return; }
+    if (id === 'join') {
+      var on = !EP.ChannelGroups.enabled();
+      EP.ChannelGroups.setEnabled(on);
+      this.status.textContent = on ? 'Qualidades do mesmo canal numa linha.' : 'Cada canal da lista numa linha.';
+      this.events.emit('visibilityChanged');
+      this.render();
+      return;
+    }
     if (id === 'format') {
       var modes = EP.LiveFormat.MODES, next = modes[(modes.indexOf(EP.LiveFormat.mode()) + 1) % modes.length];
       EP.LiveFormat.setMode(next);

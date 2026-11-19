@@ -436,18 +436,39 @@
   /* Novidades para você (regra do Android): mostra na hora a última lista
    * guardada desta lista Xtream e atualiza em segundo plano. */
   var RECENT_KEY = 'elvanoq.recentTitles.';
+  /* A lista completa de filmes pode ter dezenas de MB e vem do mesmo servidor
+   * dos canais: baixá-la junto com o vídeo fazia o ao vivo engasgar. Por isso
+   * (1.2.2) a lista guardada vale 12 h e o download só começa com a TV parada
+   * fora do player e da TV ao Vivo por 20 s; se o vídeo abrir antes, espera. */
+  var RECENT_FRESH_MS = 12 * 60 * 60 * 1000, RECENT_IDLE_MS = 20000;
   AppShell.prototype.loadRecentTitles = function () {
     var self = this, xt = this.xtream, version = this.catalogVersion;
     this.recentTitles = null;
+    if (this.recentTimer) { clearTimeout(this.recentTimer); this.recentTimer = null; }
     if (!this.lazy || !xt) return;
-    var key = RECENT_KEY + xt.host + '|' + xt.username;
-    try { var saved = JSON.parse(window.localStorage.getItem(key) || 'null'); if (saved && saved.length) this.recentTitles = saved; } catch (_) {}
-    EP.CatalogService.recentTitles(xt, this.movieCategories, this.seriesCategories).then(function (result) {
-      if (version !== self.catalogVersion || !result.ok || !result.items.length) return;
-      self.recentTitles = result.items;
-      try { window.localStorage.setItem(key, JSON.stringify(result.items)); } catch (_) {}
-      self.views[HOME].setRecentTitles(self.filterVisible(result.items));
-    });
+    var key = RECENT_KEY + xt.host + '|' + xt.username, savedAt = 0;
+    try {
+      var saved = JSON.parse(window.localStorage.getItem(key) || 'null');
+      if (saved && saved.length) this.recentTitles = saved; // formato anterior: sem data
+      else if (saved && saved.items && saved.items.length) { this.recentTitles = saved.items; savedAt = Number(saved.at) || 0; }
+    } catch (_) {}
+    if (this.recentTitles && new Date().getTime() - savedAt < RECENT_FRESH_MS) return;
+    function busy() {
+      var hidden = typeof document.visibilityState === 'string' && document.visibilityState !== 'visible';
+      return hidden || self.playerView.isVisible() || self.selectedIndex === LIVE;
+    }
+    function attempt() {
+      self.recentTimer = null;
+      if (version !== self.catalogVersion) return;
+      if (busy()) { self.recentTimer = setTimeout(attempt, RECENT_IDLE_MS); return; }
+      EP.CatalogService.recentTitles(xt, self.movieCategories, self.seriesCategories).then(function (result) {
+        if (version !== self.catalogVersion || !result.ok || !result.items.length) return;
+        self.recentTitles = result.items;
+        try { window.localStorage.setItem(key, JSON.stringify({ at: new Date().getTime(), items: result.items })); } catch (_) {}
+        self.views[HOME].setRecentTitles(self.filterVisible(result.items));
+      });
+    }
+    this.recentTimer = setTimeout(attempt, RECENT_IDLE_MS);
   };
 
   /* Pré-conexão (1.1.7): DNS e conexão com o servidor dos vídeos prontos
