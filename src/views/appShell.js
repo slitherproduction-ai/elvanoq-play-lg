@@ -505,7 +505,12 @@
       if (self.selectedIndex === SETTINGS) self.views[SETTINGS].setStatus(self.lazy ? 'Lista atualizada: ' + EP.formatNumber(self.allCategoryNames().length) + ' categorias.' : 'Lista atualizada: ' + EP.formatNumber(self.catalog.length) + ' itens.');
     }, function (error) {
       if (token !== self.catalogToken) return;
-      self.app.setLoading((error && error.message) || 'Catálogo indisponível.');
+      // A lista não abriu: janela com o motivo e o que fazer (canvas, tela 4).
+      self.app.openProblem({
+        message: (error && error.message) || 'Catálogo indisponível.',
+        onRetry: function () { self.loadCatalog(playlist); },
+        onEdit: function () { self.app.openServerCodeKeyboard(); }
+      });
     });
   };
 
