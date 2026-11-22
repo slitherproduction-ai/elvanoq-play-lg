@@ -400,6 +400,14 @@
     return this.dialog;
   };
 
+  /* "A lista não abriu" com o motivo e o que fazer (canvas, tela 4). */
+  MainScene.prototype.openProblem = function (opts) {
+    if (this.dialog && !this.dialog.closed) this.dialog.close();
+    this.setLoading('');
+    this.dialog = new EP.ProblemDialog(this.stage, opts);
+    return this.dialog;
+  };
+
   MainScene.prototype.openKeyboard = function (opts) {
     if (this.dialog && !this.dialog.closed) this.dialog.close();
     this.dialog = new EP.KeyboardDialog(this.stage, opts);
