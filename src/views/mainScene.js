@@ -287,27 +287,43 @@
     Portal.licenseStatus().then(function (r) {
       self.requestInFlight = false;
       self.showActivationState(r.state, r.message);
-      if (r.state === 'active' && !self.playlistSynced) self.requestPlaylistSync(false);
+      if (r.state === 'active' && !self.playlistSynced && !self.manualSession && !Portal.manual) self.requestPlaylistSync(false);
     });
   };
 
   MainScene.prototype.requestPlaylistSync = function (manual) {
     var self = this;
-    if (this.syncInFlight) return;
+    if (this.syncInFlight || this.manualSession || Portal.manual) return;
     this.syncInFlight = true;
     if (manual) this.setLoading('Buscando a lista salva no Portal…');
     Portal.playlistSync().then(function (r) {
       self.syncInFlight = false;
+      // Respostas atrasadas do Portal nunca substituem o login por código.
+      if (self.manualSession || Portal.manual) return;
       if (r.ok && r.playlist) {
         self.playlistSynced = true;
+        self.setActivationVisible(false);
+        self.shell.show(true);
         self.shell.applyPlaylist({ display_name: r.displayName, server_code: r.body.server_code, playlist: r.playlist });
         return;
       }
-      if (r.ok && r.empty) { self.playlistSynced = true; self.setLoading('Nenhuma lista vinculada a esta TV no Portal. Adicione em elvanoqplay.app.'); return; }
+      if (r.ok && r.empty) {
+        self.playlistSynced = true;
+        self.setLoading('');
+        if (!self.shell.playlistName) {
+          self.shell.show(false);
+          self.setActivationVisible(true);
+          self.setTone('waiting');
+          self.status.textContent = 'Nenhuma lista no Portal. Adicione pelo QR code ou entre com o código do servidor.';
+        }
+        return;
+      }
       // Falha de rede/limite: usa a última lista sincronizada, sem apagar dados locais.
       var cached = Portal.portalPlaylist();
       if (cached && (r.status === 0 || r.status === 429 || r.status >= 500) && !self.playlistSynced) {
         self.playlistSynced = true;
+        self.setActivationVisible(false);
+        self.shell.show(true);
         self.shell.applyPlaylist({ display_name: cached.name, playlist: cached });
         return;
       }
@@ -333,6 +349,12 @@
     if (state === 'active') {
       S.show(this.expiredOverlay, false);
       this.licenseTimer.seconds = ACTIVE_POLL; if (this.licenseTimer.running()) this.licenseTimer.start();
+      if (!this.manualSession && !Portal.manual && !this.shell.playlistName) {
+        this.setActivationVisible(true);
+        this.setTone('active');
+        this.status.textContent = 'Licença ativa. Entre com o código do servidor ou adicione sua lista pelo QR code.';
+        return;
+      }
       this.setActivationVisible(false);
       var firstOpen = !this.shell.isVisible();
       this.shell.show(true);
