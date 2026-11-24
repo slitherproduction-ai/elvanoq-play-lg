@@ -39,7 +39,12 @@
   }
 
   AppShell.prototype.isVisible = function () { return S.isVisible(this.root); };
-  AppShell.prototype.show = function (visible) { S.show(this.root, visible); if (visible) this.showSection(); };
+  AppShell.prototype.show = function (visible) {
+    // Uma licença ou um código resolvido não autenticam uma lista IPTV.
+    visible = !!visible && this.authenticated === true;
+    S.show(this.root, visible);
+    if (visible) this.showSection();
+  };
 
   AppShell.prototype.bindViews = function () {
     var self = this, v = this.views;
@@ -492,6 +497,12 @@
   AppShell.prototype.loadCatalog = function (playlist) {
     var self = this, started = new Date().getTime();
     var token = this.catalogToken = {};
+    this.authenticated = false;
+    this.stopPlayback();
+    this.show(false);
+    this.app.setActivationVisible(true);
+    this.app.setTone('connecting');
+    this.app.status.textContent = 'Validando o acesso no servidor IPTV…';
     this.app.setLoading('Carregando catálogo da sua lista…');
     EP.CatalogService.load(playlist).then(function (result) {
       if (token !== self.catalogToken) return;
@@ -501,10 +512,19 @@
       migrateLegacyState(self.catalog);
       self.epg.configure(result.epg, function () { if (self.selectedIndex === LIVE) self.views[LIVE].setEpg(); });
       self.refreshCurrent(false);
+      if (self.app.licenseState === 'blocked' || self.app.licenseState === 'expired') return;
+      self.authenticated = true;
+      self.app.setActivationVisible(false);
+      self.show(true);
       self.tryDeepLink();
       if (self.selectedIndex === SETTINGS) self.views[SETTINGS].setStatus(self.lazy ? 'Lista atualizada: ' + EP.formatNumber(self.allCategoryNames().length) + ' categorias.' : 'Lista atualizada: ' + EP.formatNumber(self.catalog.length) + ' itens.');
     }, function (error) {
       if (token !== self.catalogToken) return;
+      self.authenticated = false;
+      self.show(false);
+      self.app.setActivationVisible(true);
+      self.app.setTone('error');
+      self.app.status.textContent = (error && error.message) || 'Não foi possível autenticar a lista.';
       // A lista não abriu: janela com o motivo e o que fazer (canvas, tela 4).
       self.app.openProblem({
         message: (error && error.message) || 'Catálogo indisponível.',

@@ -293,17 +293,15 @@
 
   MainScene.prototype.requestPlaylistSync = function (manual) {
     var self = this;
-    if (this.syncInFlight || this.manualSession || Portal.manual) return;
+    if (this.syncInFlight || this.manualSession || Portal.manual || (this.dialog && !this.dialog.closed)) return;
     this.syncInFlight = true;
     if (manual) this.setLoading('Buscando a lista salva no Portal…');
     Portal.playlistSync().then(function (r) {
       self.syncInFlight = false;
       // Respostas atrasadas do Portal nunca substituem o login por código.
-      if (self.manualSession || Portal.manual) return;
+      if (self.manualSession || Portal.manual || (self.dialog && !self.dialog.closed)) return;
       if (r.ok && r.playlist) {
         self.playlistSynced = true;
-        self.setActivationVisible(false);
-        self.shell.show(true);
         self.shell.applyPlaylist({ display_name: r.displayName, server_code: r.body.server_code, playlist: r.playlist });
         return;
       }
@@ -322,8 +320,6 @@
       var cached = Portal.portalPlaylist();
       if (cached && (r.status === 0 || r.status === 429 || r.status >= 500) && !self.playlistSynced) {
         self.playlistSynced = true;
-        self.setActivationVisible(false);
-        self.shell.show(true);
         self.shell.applyPlaylist({ display_name: cached.name, playlist: cached });
         return;
       }
@@ -349,7 +345,7 @@
     if (state === 'active') {
       S.show(this.expiredOverlay, false);
       this.licenseTimer.seconds = ACTIVE_POLL; if (this.licenseTimer.running()) this.licenseTimer.start();
-      if (!this.manualSession && !Portal.manual && !this.shell.playlistName) {
+      if (this.shell.authenticated !== true) {
         this.setActivationVisible(true);
         this.setTone('active');
         this.status.textContent = 'Licença ativa. Entre com o código do servidor ou adicione sua lista pelo QR code.';
@@ -368,6 +364,10 @@
       this.expiredInfo.textContent = 'A ativação é verificada automaticamente a cada ' + PENDING_POLL + ' segundos.';
     }
     this.licenseTimer.seconds = PENDING_POLL; if (this.licenseTimer.running()) this.licenseTimer.start();
+    if (state === 'expired' || state === 'blocked') {
+      this.shell.authenticated = false;
+      this.shell.catalogToken = {};
+    }
     if ((state === 'expired' || state === 'blocked') && this.shell.isVisible()) {
       this.shell.stopPlayback();
       this.shell.show(false);
@@ -439,6 +439,11 @@
   /* Login por código do servidor: código -> usuário -> senha (só em memória). */
   MainScene.prototype.openServerCodeKeyboard = function () {
     var self = this;
+    this.shell.authenticated = false;
+    this.shell.catalogToken = {};
+    this.shell.stopPlayback();
+    this.shell.show(false);
+    this.setActivationVisible(true);
     this.status.textContent = 'Informe o código do servidor para continuar.';
     this.openKeyboard({
       title: 'Código do servidor', message: 'Digite o código recebido no Portal.', buttons: ['Continuar', 'Cancelar'],
@@ -470,8 +475,6 @@
             var playlist = Portal.useManualPlaylist({ name: 'Acesso por código', sourceType: 'xtream', credentials: { host: host, username: username, password: password } });
             EP.Registry.remove('login_removed');
             self.manualSession = true;
-            self.setActivationVisible(false);
-            self.shell.show(true);
             self.shell.applyPlaylist({ display_name: 'Acesso por código', server_code: code, playlist: playlist });
           }
         });
