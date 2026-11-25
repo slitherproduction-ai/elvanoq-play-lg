@@ -186,6 +186,7 @@
       if (!Portal.identity) this.giveConsent(); else this.openServerCodeKeyboard();
     } else if (this.actionIndex === 1) {
       if (!Portal.identity) return;
+      if (!this.manualSession && !Portal.manual) this.playlistSynced = false;
       this.status.textContent = 'Verificando a ativação…';
       this.setTone('connecting');
       this.checkLicense();
@@ -293,13 +294,13 @@
 
   MainScene.prototype.requestPlaylistSync = function (manual) {
     var self = this;
-    if (this.syncInFlight || this.manualSession || Portal.manual || (this.dialog && !this.dialog.closed)) return;
+    if (this.syncInFlight || this.manualSession || Portal.manual || this.codeLoginActive) return;
     this.syncInFlight = true;
     if (manual) this.setLoading('Buscando a lista salva no Portal…');
     Portal.playlistSync().then(function (r) {
       self.syncInFlight = false;
       // Respostas atrasadas do Portal nunca substituem o login por código.
-      if (self.manualSession || Portal.manual || (self.dialog && !self.dialog.closed)) return;
+      if (self.manualSession || Portal.manual || self.codeLoginActive) return;
       if (r.ok && r.playlist) {
         self.playlistSynced = true;
         self.shell.applyPlaylist({ display_name: r.displayName, server_code: r.body.server_code, playlist: r.playlist });
@@ -348,7 +349,7 @@
       if (this.shell.authenticated !== true) {
         this.setActivationVisible(true);
         this.setTone('active');
-        this.status.textContent = 'Licença ativa. Entre com o código do servidor ou adicione sua lista pelo QR code.';
+        this.status.textContent = this.manualSession || Portal.manual ? 'Validando o acesso à sua lista…' : 'Licença ativa. Buscando sua lista no Portal…';
         return;
       }
       this.setActivationVisible(false);
@@ -437,8 +438,22 @@
   };
 
   /* Login por código do servidor: código -> usuário -> senha (só em memória). */
+  MainScene.prototype.cancelServerCodeLogin = function () {
+    this.codeLoginActive = false;
+    if (this.dialog && !this.dialog.closed) this.dialog.close();
+    if (this.manualSession && Portal.manual) {
+      this.shell.applyPlaylist({ display_name: Portal.manual.name, playlist: Portal.manual });
+      return;
+    }
+    this.playlistSynced = false;
+    this.status.textContent = 'Retomando a lista vinculada no Portal…';
+    this.requestPlaylistSync(true);
+  };
+
   MainScene.prototype.openServerCodeKeyboard = function () {
     var self = this;
+    this.codeLoginActive = true;
+    this.playlistSynced = false;
     this.shell.authenticated = false;
     this.shell.catalogToken = {};
     this.shell.stopPlayback();
@@ -448,7 +463,7 @@
     this.openKeyboard({
       title: 'Código do servidor', message: 'Digite o código recebido no Portal.', buttons: ['Continuar', 'Cancelar'],
       onButton: function (index, value) {
-        if (index !== 0) { self.status.textContent = 'Login por código cancelado.'; return; }
+        if (index !== 0) { self.cancelServerCodeLogin(); return; }
         var code = String(value || '').replace(/\s/g, '').toLowerCase();
         if (!/^[a-z0-9][a-z0-9_-]{2,31}$/.test(code)) { self.status.textContent = 'Código inválido. Confira o código e tente novamente.'; return; }
         self.status.textContent = 'Validando o código do servidor…';
@@ -467,13 +482,14 @@
       title: 'Usuário da lista', message: 'Informe o usuário do seu acesso.', buttons: ['Continuar', 'Cancelar'],
       onButton: function (index, username) {
         username = EP.text(username);
-        if (index !== 0 || !username) { self.status.textContent = 'Login por código cancelado.'; return; }
+        if (index !== 0 || !username) { self.cancelServerCodeLogin(); return; }
         self.openKeyboard({
           title: 'Senha da lista', message: 'Informe a senha do seu acesso.', buttons: ['Conectar', 'Cancelar'], secure: true,
           onButton: function (i, password) {
-            if (i !== 0 || !password) { self.status.textContent = 'Login por código cancelado.'; return; }
+            if (i !== 0 || !password) { self.cancelServerCodeLogin(); return; }
             var playlist = Portal.useManualPlaylist({ name: 'Acesso por código', sourceType: 'xtream', credentials: { host: host, username: username, password: password } });
             EP.Registry.remove('login_removed');
+            self.codeLoginActive = false;
             self.manualSession = true;
             self.shell.applyPlaylist({ display_name: 'Acesso por código', server_code: code, playlist: playlist });
           }
