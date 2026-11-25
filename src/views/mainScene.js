@@ -99,25 +99,10 @@
     this.shell = new EP.AppShell(stage, this);
     this.loading = S.el(stage, { x: 1300, y: 990, w: 560, h: 56, visible: false, css: 'display:flex;align-items:center;justify-content:center;padding:0 24px;border-radius:28px;background:rgba(17,27,45,0.92);border:1px solid rgba(190,222,255,0.16);font-size:20px;color:#c9d3e3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:40' });
 
-    // Bem-vindo de volta (mesmo do Android TV e da Roku): fundo do login, a
-    // lista em uso e uma barra de 1,2 s por cima da Início, que já carrega por
-    // baixo. Entra sozinho, sem apertar nada; uma vez por abertura do app.
-    var wb = this.welcome = S.group(stage, { visible: false });
-    wb.style.zIndex = '45';
-    S.rect(wb, { x: 0, y: 0, w: 1920, h: 1080, color: '0x070B14FF' });
-    S.poster(wb, { x: 0, y: 0, w: 1920, h: 1080, uri: 'images/elvanoq-login-tv-backdrop.jpg' });
-    S.el(wb, { x: 0, y: 0, w: 1920, h: 1080, css: 'background:linear-gradient(90deg,rgba(7,11,20,0.96) 0%,rgba(7,11,20,0.88) 38%,rgba(7,11,20,0.35) 70%,rgba(7,11,20,0) 100%)' });
-    S.poster(wb, { x: 112, y: 72, w: 400, h: 97, uri: 'images/elvanoq-logo-tagline.png', mode: 'fit' }).style.backgroundPosition = 'left center';
-    S.el(wb, { x: 112, y: 345, w: 14, h: 14, css: 'border-radius:7px;background:#00d7ff' });
-    S.label(wb, { x: 140, y: 332, w: 900, h: 40, text: 'TV vinculada ao Portal', size: 22, valign: 'center', color: '0xC9D2E3FF' });
-    S.label(wb, { x: 112, y: 380, w: 1200, h: 84, text: 'Bem-vindo de volta', size: 66, weight: 700, css: 'letter-spacing:-0.026em' });
-    S.label(wb, { x: 112, y: 470, w: 1000, h: 40, text: 'Entrando na sua lista…', size: 27, color: '0xC9D2E3FF' });
-    S.el(wb, { x: 112, y: 550, w: 760, h: 190, css: 'border-radius:24px;background:rgba(14,21,36,0.92)' });
-    this.welcomeInitial = S.el(wb, { x: 142, y: 580, w: 76, h: 76, css: 'border-radius:20px;background:#1a2438;color:#00d7ff;font-size:34px;font-weight:700;display:flex;align-items:center;justify-content:center' });
-    this.welcomeName = S.label(wb, { x: 242, y: 584, w: 600, h: 40, size: 30, weight: 700, css: 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis' });
-    S.label(wb, { x: 242, y: 626, w: 600, h: 30, text: 'Lista em uso', size: 20, color: '0x9AA6BDFF' });
-    S.el(wb, { x: 142, y: 690, w: 700, h: 6, css: 'border-radius:3px;background:rgba(244,248,255,0.14);overflow:hidden', html: '<div class="welcome-bar"></div>' });
-    this.welcomeShown = false;
+    // Bem-vindo de volta (welcomeView.js): TV licenciada com lista salva abre
+    // nesta tela enquanto confere licença, servidor e catálogo.
+    this.welcomeView = new EP.WelcomeView(stage);
+    this.welcomeView.onTimeout = function () { self.welcomeView.hide(); };
 
     this.dialog = null;
     this.requestInFlight = false;
@@ -144,6 +129,7 @@
       this.status.textContent = 'Login excluído. Entre novamente para continuar.';
       return;
     }
+    this.startWelcome();
     this.connect();
   };
 
@@ -313,6 +299,7 @@
         return;
       }
       if (r.ok && r.empty) {
+        self.endWelcome();
         self.playlistSynced = true;
         self.setLoading('');
         if (!self.shell.playlistName) {
@@ -330,25 +317,23 @@
         self.shell.applyPlaylist({ display_name: cached.name, playlist: cached });
         return;
       }
+      self.endWelcome();
       self.setLoading(r.message || 'Falha temporária ao sincronizar. Seus dados locais foram preservados.');
     });
   };
 
-  MainScene.prototype.showWelcomeBack = function () {
-    if (this.welcomeShown) return;
-    this.welcomeShown = true;
+  /* Abertura de uma TV já licenciada e com lista salva: "Bem-vindo de volta". */
+  MainScene.prototype.startWelcome = function () {
     var meta = EP.Registry.readJson('playlist_metadata', null);
     if (!meta) return;
-    var name = (meta.display_name || '').replace(/^\s+|\s+$/g, '') || 'Minha lista';
-    var self = this;
-    this.welcomeInitial.textContent = name.charAt(0).toUpperCase();
-    this.welcomeName.textContent = name;
-    S.show(this.welcome, true);
-    setTimeout(function () { S.show(self.welcome, false); }, 1250);
+    this.welcomeView.start(meta.display_name || '');
   };
+
+  MainScene.prototype.endWelcome = function () { if (this.welcomeView && this.welcomeView.active) this.welcomeView.hide(); };
 
   MainScene.prototype.showActivationState = function (state, message) {
     this.licenseState = state === 'offline' && this.licenseState === 'active' ? 'active' : state;
+    if (this.welcomeView && this.welcomeView.active) { if (state === 'active') this.welcomeView.setStep(1); else if (!this.shell.isVisible()) this.endWelcome(); }
     if (state === 'active') {
       S.show(this.expiredOverlay, false);
       this.licenseTimer.stop(); // No license polling during an authorized session.
@@ -359,9 +344,7 @@
         return;
       }
       this.setActivationVisible(false);
-      var firstOpen = !this.shell.isVisible();
       this.shell.show(true);
-      if (firstOpen) this.showWelcomeBack();
       return;
     }
     if (state === 'offline' && this.shell.isVisible()) return; // mantém o app em uso sem rede
@@ -398,6 +381,8 @@
   /* ---------- teclas ---------- */
   MainScene.prototype.handleKey = function (key, event) {
     if (this.dialog && !this.dialog.closed) return this.dialog.handleKey(key, event);
+    // Bem-vindo de volta: espera sozinho; Voltar sai do app.
+    if (this.welcomeView && this.welcomeView.isVisible()) return key !== 'back';
     if (this.shell.isVisible() && !S.isVisible(this.activation)) return this.shell.handleKey(key);
     // Teste encerrado: OK verifica de novo; Voltar sai do app.
     if (S.isVisible(this.expiredOverlay)) {
@@ -425,6 +410,7 @@
   };
 
   MainScene.prototype.openList = function (opts) {
+    this.endWelcome();
     if (this.dialog && !this.dialog.closed) this.dialog.close();
     this.dialog = new EP.ListDialog(this.stage, opts);
     return this.dialog;
@@ -432,6 +418,7 @@
 
   /* "A lista não abriu" com o motivo e o que fazer (canvas, tela 4). */
   MainScene.prototype.openProblem = function (opts) {
+    this.endWelcome();
     if (this.dialog && !this.dialog.closed) this.dialog.close();
     this.setLoading('');
     this.dialog = new EP.ProblemDialog(this.stage, opts);
@@ -439,6 +426,7 @@
   };
 
   MainScene.prototype.openKeyboard = function (opts) {
+    this.endWelcome();
     if (this.dialog && !this.dialog.closed) this.dialog.close();
     this.dialog = new EP.KeyboardDialog(this.stage, opts);
     return this.dialog;

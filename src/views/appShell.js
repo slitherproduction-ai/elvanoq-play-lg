@@ -417,6 +417,18 @@
     this.loadCatalog(payload.playlist);
   };
 
+  /* Totais mostrados no fim do "Bem-vindo de volta". */
+  AppShell.prototype.welcomeCounts = function () {
+    var fmt = EP.formatNumber;
+    if (this.lazy) {
+      var live = (this.liveCategories || []).length, vod = (this.movieCategories || []).length + (this.seriesCategories || []).length;
+      return live + vod ? fmt(live) + ' categorias de canais · ' + fmt(vod) + ' de filmes e séries' : '';
+    }
+    var items = this.catalog || [], channels = 0;
+    for (var i = 0; i < items.length; i++) if (items[i].type === 'live') channels++;
+    return items.length ? fmt(channels) + ' canais · ' + fmt(items.length - channels) + ' filmes e séries' : '';
+  };
+
   /* Dados do catálogo carregado (comum à carga normal e à atualização em segundo plano). */
   AppShell.prototype.applyCatalogResult = function (playlist, result, started) {
     this.catalog = result.channels;
@@ -504,6 +516,7 @@
     this.app.setTone('connecting');
     this.app.status.textContent = 'Validando o acesso no servidor IPTV…';
     this.app.setLoading('Carregando catálogo da sua lista…');
+    if (this.app.welcomeView) this.app.welcomeView.setStep(2);
     EP.CatalogService.load(playlist).then(function (result) {
       if (token !== self.catalogToken) return;
       self.app.setLoading('');
@@ -516,10 +529,12 @@
       self.authenticated = true;
       self.app.setActivationVisible(false);
       self.show(true);
+      if (self.app.welcomeView && self.app.welcomeView.active) self.app.welcomeView.finish(self.welcomeCounts());
       self.tryDeepLink();
       if (self.selectedIndex === SETTINGS) self.views[SETTINGS].setStatus(self.lazy ? 'Lista atualizada: ' + EP.formatNumber(self.allCategoryNames().length) + ' categorias.' : 'Lista atualizada: ' + EP.formatNumber(self.catalog.length) + ' itens.');
     }, function (error) {
       if (token !== self.catalogToken) return;
+      if (self.app.endWelcome) self.app.endWelcome();
       self.authenticated = false;
       self.show(false);
       self.app.setActivationVisible(true);

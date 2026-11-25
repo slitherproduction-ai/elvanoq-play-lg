@@ -3,6 +3,20 @@
 (function (EP) {
   'use strict';
   EP.I18N_EN = {
+    "Bom dia,": "Good morning,",
+    "Boa tarde,": "Good afternoon,",
+    "Boa noite,": "Good evening,",
+    "Confirmando a licença…": "Confirming the license…",
+    "Conectando ao servidor da lista…": "Connecting to the list's server…",
+    "Carregando canais, filmes e séries…": "Loading channels, movies and series…",
+    "Tudo pronto": "All set",
+    "TV licenciada": "Licensed TV",
+    "Dica ·": "Tip ·",
+    "No ao vivo, aperte → duas vezes para abrir as opções do canal.": "In Live TV, press → twice to open the channel options.",
+    "Segure OK num canal ou filme para salvar na Minha Lista.": "Hold OK on a channel or movie to save it to My List.",
+    "Em Ajustes você esconde as categorias que não usa.": "In Settings you can hide the categories you don't use.",
+    "{0} canais · {1} filmes e séries": "{0} channels · {1} movies and series",
+    "{0} categorias de canais · {1} de filmes e séries": "{0} channel categories · {1} movie and series categories",
     " • Nota {0}": " • Rating {0}",
     " • SEGUINTE {0}": " • NEXT {0}",
     " • termina às {0}": " • ends at {0}",
