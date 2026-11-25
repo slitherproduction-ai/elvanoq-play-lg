@@ -1,3 +1,8 @@
+# 1.2.2 — 2026-11-25
+
+- **Diagnóstico anônimo de reprodução** (`src/core/telemetry.js`): o player registra travamentos (`stall`), falhas de abertura (`open_fail`, por erro ou tempo esgotado), troca de formato HLS↔TS (`format_switch`), troca de fonte (`source_switch`), carregamentos de 2 s ou mais no meio do vídeo (`buffering`), recuperação (`recovered`) e tela de erro (`fatal`). Vai em lote (no máximo 1 envio por minuto, até 25 eventos, 30 por conteúdo) para a função `tv-telemetry` do Supabase e aparece no Portal. Só o host do servidor (sem usuário, senha nem caminho), o canal, o formato e o código da TV em hash; o servidor apaga tudo depois de 7 dias. Falha em silêncio. Novo teste `tests/telemetry.test.cjs`.
+- Validação: `?v=` no `src` dos scripts do `index.html` não quebra mais a checagem.
+
 # 1.2.1 — 2026-11-18
 
 - **Por que a lista não abre** (Android 2.17.77; `src/core/connectionDiagnosis.js`): sem resposta do servidor da lista, a TV consulta o nome dele no DNS público do Google (HTTPS, sem passar pelo nosso servidor e sem usuário nem senha) e diz o motivo: endereço que não existe, TV sem internet, servidor que não responde (demorou) ou provável bloqueio da operadora (falhou na hora), com a dica de trocar o DNS da TV ou do roteador. Vale ao abrir a lista (Xtream e M3U) e no Testar conexão do Diagnóstico. Novo teste `tests/connection-diagnosis.test.cjs`.

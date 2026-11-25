@@ -19,6 +19,9 @@
   // desiste antes: o outro formato (TS <-> HLS) é tentado em 6 s, não em 12 s.
   var OPEN_LIVE_FIRST_MS = 6000;
   var STALL_TEXT = 'O sinal parou de chegar. Reconectando…';
+  // Diagnóstico anônimo (EP.Telemetry): carregamento no meio do vídeo a partir deste tempo.
+  var BUFFERING_REPORT_MS = 2000;
+  function tel(view, event, extra) { if (EP.Telemetry) EP.Telemetry.fromPlayer(view, event, extra); }
 
   function PlayerView(parent) {
     var root = this.root = S.group(parent, { className: 'layer', visible: false });
@@ -114,7 +117,11 @@
     function on(name, fn) { v.addEventListener(name, function (e) { if (v === self.video) fn(e); }); }
     on('playing', function () { self.onPlaying(); });
     on('pause', function () { if (!v.ended && !self.failed) { S.setButton(self.controlLabels[1], '', 'Retomar'); self.showOsd(); } });
-    on('waiting', function () { if (self.hint.textContent !== STALL_TEXT) self.hint.textContent = 'Carregando stream…'; self.showOsd(); });
+    on('waiting', function () {
+      if (self.loadToken && self.loadToken.started && !self.waitingAt) self.waitingAt = Date.now();
+      if (self.hint.textContent !== STALL_TEXT) self.hint.textContent = 'Carregando stream…';
+      self.showOsd();
+    });
     on('timeupdate', function () { self.onPositionChanged(); });
     on('loadedmetadata', function () {
       self.refreshTrackStatus();
@@ -122,7 +129,7 @@
       if (self.pendingSeek > 0) { try { v.currentTime = self.pendingSeek; } catch (_) {} self.pendingSeek = 0; }
     });
     on('ended', function () { self.onFinished(); });
-    on('error', function () { self.hideOpeningCover(); self.onLoadError(self.loadToken); });
+    on('error', function () { self.hideOpeningCover(); self.onLoadError(self.loadToken, 'error'); });
   };
 
   PlayerView.prototype.showOpeningCover = function (content) {
@@ -159,6 +166,13 @@
     if (this.loadToken) this.loadToken.started = true;
     this.clearOpenTimeout();
     this.recordOpen(true);
+    var now = Date.now();
+    if (this.waitingAt) {
+      if (now - this.waitingAt >= BUFFERING_REPORT_MS) tel(this, 'buffering', { duration_ms: now - this.waitingAt });
+      this.waitingAt = 0;
+    }
+    if (this.liveRetries > 0) tel(this, 'recovered', { duration_ms: now - (this.failSince || now), attempt: this.liveRetries, detail: 'open' });
+    this.failSince = 0;
     this.liveRetries = 0;
     this.userPaused = false;
     if (this.isLive()) LF.remember(LF.formatOf(this.currentUrl)); // "Automático": lembra o que abriu
@@ -210,6 +224,8 @@
    *            skipIntroEnd, nextEpisode, liveQueue, liveIndex, liveGuide } */
   PlayerView.prototype.play = function (content) {
     this.content = content;
+    if (EP.Telemetry) EP.Telemetry.startSession();
+    this.waitingAt = 0; this.failSince = 0; this.stallSince = 0;
     S.show(this.root, true);
     this.cancelNextEpisode(false);
     this.title.textContent = content.title || '';
@@ -255,6 +271,7 @@
   PlayerView.prototype.load = function (url) {
     var v = this.video;
     this.currentUrl = url;
+    this.loadAt = Date.now(); this.waitingAt = 0;
     // Libera o decoder da TV antes de trocar a fonte: pause, sem src, load().
     try { v.pause(); } catch (_) {}
     v.removeAttribute('src');
@@ -263,7 +280,7 @@
     var source = document.createElement('source'), self = this, token = this.loadToken = {};
     source.src = url;
     // Com <source>, a falha chega no próprio <source> (o <video> não dispara 'error').
-    source.addEventListener('error', function () { self.onLoadError(token); });
+    source.addEventListener('error', function () { self.onLoadError(token, 'error'); });
     var mime = F.mimeForUrl(url);
     if (mime && mime !== 'video/mp2t' && mime !== 'video/x-matroska') source.type = mime;
     v.appendChild(source);
@@ -297,7 +314,7 @@
       // Pausado pelo usuário ou app em segundo plano: espera de novo.
       var hidden = typeof document.visibilityState === 'string' && document.visibilityState !== 'visible';
       if (self.userPaused || hidden) { self.armOpenTimeout(token); return; }
-      self.onLoadError(token);
+      self.onLoadError(token, 'timeout');
     }, this.openTimeoutMs());
   };
 
@@ -322,10 +339,13 @@
   };
 
   /* Uma falha por carregamento, venha do <video> ou do <source>. */
-  PlayerView.prototype.onLoadError = function (token) {
+  PlayerView.prototype.onLoadError = function (token, reason) {
     this.hideOpeningCover();
     if (!token || token !== this.loadToken || token.failed) return;
     token.failed = true;
+    var now = Date.now();
+    if (!this.failSince) this.failSince = this.loadAt || now;
+    tel(this, 'open_fail', { duration_ms: now - (this.loadAt || now), attempt: this.liveRetries, detail: (reason || 'error') + (this.hasStarted ? ' depois de tocar' : '') });
     this.onError();
   };
 
@@ -351,6 +371,7 @@
       if (next) {
         this.hint.textContent = 'Esta fonte não abriu. Tentando outra fonte…';
         this.showOsd();
+        tel(this, 'source_switch', { attempt: this.liveRetries, detail: String(next.title || next.name || '') });
         this.events.emit('sourceRequested', { item: next, tried: tried });
         return;
       }
@@ -380,6 +401,7 @@
     this.stopWatchdog();
     this.failed = true;
     this.recordOpen(false);
+    tel(this, 'fatal', { attempt: Math.max(this.liveRetries || 0, this.stallRetries || 0), detail: message });
     this.hint.textContent = message;
     S.setButton(this.controlLabels[1], '', 'Tentar');
     this.selectedControl = 1; this.updateControlFocus();
@@ -420,6 +442,8 @@
     if (this.lastTime < 0) { this.lastTime = v.currentTime; this.lastProgressAt = now; return; }
     if (v.currentTime > this.lastTime + 0.25) {
       if (this.stallRetries && this.hint.textContent === STALL_TEXT) this.hint.textContent = this.defaultHint();
+      if (this.stallRetries) tel(this, 'recovered', { duration_ms: now - (this.stallSince || now), attempt: this.stallRetries, detail: 'stall' });
+      this.stallSince = 0;
       this.hasStarted = true;
       this.lastTime = v.currentTime;
       this.lastProgressAt = now;
@@ -431,6 +455,8 @@
     if (now - this.lastProgressAt < (this.isLive() ? STALL_LIVE_MS : STALL_VOD_MS)) return;
     if (this.stallRetries >= STALL_RETRIES) { this.showFatal('O sinal não voltou. Confira a internet e tente de novo.'); return; }
     this.stallRetries++;
+    if (!this.stallSince) this.stallSince = this.lastProgressAt;
+    tel(this, 'stall', { duration_ms: now - this.lastProgressAt, attempt: this.stallRetries });
     this.lastProgressAt = now;
     this.hint.textContent = STALL_TEXT;
     this.showOsd();
@@ -445,6 +471,7 @@
     // No "Automático", a 1ª reconexão troca HLS <-> TS do mesmo canal Xtream;
     // o formato que abrir fica lembrado para a lista. A escolha manual vence.
     var alternative = this.liveRetries === 1 && LF.mode() === 'auto' ? (LF.alternative(this.currentUrl) || F.hlsAlternative(this.currentUrl)) : '';
+    if (alternative && EP.Telemetry) tel(this, 'format_switch', { attempt: this.liveRetries, detail: 'para ' + EP.Telemetry.formatOf(alternative) });
     this.load(alternative || this.currentUrl);
   };
 
