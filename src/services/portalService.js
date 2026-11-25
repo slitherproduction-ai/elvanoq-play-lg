@@ -52,6 +52,9 @@
   var Portal = EP.Portal = {
     identity: null,
     lastLicenseOkAt: 0,
+    sessionAuthorized: false,
+    authorizationIdentity: "",
+    authorizationUntil: null,
     retryAt: 0,
 
     readIdentity: function () {
@@ -117,29 +120,34 @@
       });
     },
 
+    // Only called at launch, resume, or an explicit activation/payment action.
     licenseStatus: function () {
+      var subject = Portal.identity ? Portal.identity.deviceId + ':' + Portal.identity.key : '';
       return Portal.request('webos-license-status', Portal.identityPayload()).then(function (r) {
-        if (r.status === 0 || r.status === 429) { r.state = 'offline'; return r; }
-        if (r.status === 401 || r.status === 403) {
-          r.state = EP.lower(r.body && r.body.license && r.body.license.status) === 'inactive' ? 'blocked' : 'pending';
+        if (!Portal.identity || subject !== Portal.identity.deviceId + ':' + Portal.identity.key) return { ok: false, state: 'offline', status: 0, body: {}, message: 'Identificação alterada. Verifique novamente.' };
+        if (r.status === 0 || r.status === 429 || r.status >= 500) {
+          var age = Date.now() - Portal.lastLicenseOkAt;
+          var until = Portal.authorizationUntil ? Date.parse(Portal.authorizationUntil) : Infinity;
+          if (Portal.authorizationIdentity === subject && Portal.sessionAuthorized && age >= 0 && age <= 86400000 && until > Date.now()) {
+            r.ok = true; r.state = 'active'; r.cachedAuthorization = true;
+            r.message = 'Portal temporariamente indisponível. Mantida a última autorização válida.';
+          } else { Portal.sessionAuthorized = false; r.state = 'offline'; }
           return r;
         }
-        if (!r.ok) { r.state = 'error'; return r; }
-        r.state = licenseState(r.body);
-        if (r.state === 'active') Portal.lastLicenseOkAt = Date.now();
+        r.state = r.status === 401 || r.status === 403 || r.status === 409 ? 'blocked' : r.ok ? licenseState(r.body) : 'error';
+        Portal.sessionAuthorized = r.state === 'active';
+        if (Portal.sessionAuthorized) {
+          Portal.lastLicenseOkAt = Date.now(); Portal.authorizationIdentity = subject;
+          Portal.authorizationUntil = r.body.license && (r.body.license.expires_at || r.body.license.access_until) || null;
+        } else { Portal.lastLicenseOkAt = 0; Portal.authorizationIdentity = ''; Portal.authorizationUntil = null; }
         return r;
       });
     },
 
-    /* Revalida antes de reproduzir; reaproveita uma resposta ativa recente
-     * para respeitar o limite de 60 consultas / 15 min do Portal. */
+    // Playback consumes the current session decision; it never calls the Portal.
     ensurePlayable: function () {
-      if (!Portal.identity) return Promise.resolve(false);
-      if (Date.now() - Portal.lastLicenseOkAt < 120000) return Promise.resolve(true);
-      return Portal.licenseStatus().then(function (r) {
-        if (r.state === 'offline' && Portal.lastLicenseOkAt) return true;
-        return r.state === 'active';
-      });
+      var subject = Portal.identity ? Portal.identity.deviceId + ':' + Portal.identity.key : '';
+      return Promise.resolve(!!subject && Portal.sessionAuthorized === true && Portal.authorizationIdentity === subject);
     },
 
     playlistSync: function () {
@@ -163,9 +171,20 @@
         if (!registered.ok) return registered;
         return Portal.request('server-code-resolve', EP.extend({ code: code, platform: 'webos' }, Portal.identityPayload()));
       }).then(function (r) {
+        if (r.ok && r.body && r.body.license) {
+          Portal.sessionAuthorized = licenseState(r.body) === 'active';
+          Portal.authorizationIdentity = Portal.sessionAuthorized && Portal.identity ? Portal.identity.deviceId + ':' + Portal.identity.key : '';
+          Portal.lastLicenseOkAt = Portal.sessionAuthorized ? Date.now() : 0;
+          Portal.authorizationUntil = r.body.license.expires_at || r.body.license.access_until || null;
+        } else if (!r.ok && r.status !== 0 && r.status !== 429 && r.status < 500) {
+          Portal.sessionAuthorized = false; Portal.authorizationIdentity = ''; Portal.lastLicenseOkAt = 0;
+        }
         var server = r.body && (r.body.server || r.body.data || r.body);
         var host = EP.text(server && server.host);
         r.host = host && EP.PlaylistRules.isHttpUrl(host) && !/[@?#]/.test(host) ? host : '';
+        if (r.ok && !r.body.license) return Portal.licenseStatus().then(function (grant) {
+          return grant.state === 'active' ? r : { ok: false, status: grant.status, body: grant.body, message: grant.message || 'A licença não está ativa.' };
+        });
         return r;
       });
     },
@@ -181,4 +200,5 @@
     }
   };
 }(window.EP));
+
 

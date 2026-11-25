@@ -122,7 +122,13 @@
     this.dialog = null;
     this.requestInFlight = false;
     this.playlistSynced = false;
-    this.licenseTimer = new EP.Timer(PENDING_POLL, true, function () { self.checkLicense(); });
+    this.licenseTimer = new EP.Timer(PENDING_POLL, true, function () { if (self.licenseState !== 'active' && !self.shell.authenticated && !self.codeLoginActive) self.checkLicense(); });
+    var wasHidden = !!document.hidden;
+    document.addEventListener('visibilitychange', function () {
+      var hidden = !!document.hidden;
+      if (!hidden && wasHidden && Portal.identity && !self.codeLoginActive) self.checkLicense();
+      wasHidden = hidden;
+    });
   }
 
   MainScene.prototype.start = function () {
@@ -345,7 +351,7 @@
     this.licenseState = state === 'offline' && this.licenseState === 'active' ? 'active' : state;
     if (state === 'active') {
       S.show(this.expiredOverlay, false);
-      this.licenseTimer.seconds = ACTIVE_POLL; if (this.licenseTimer.running()) this.licenseTimer.start();
+      this.licenseTimer.stop(); // No license polling during an authorized session.
       if (this.shell.authenticated !== true) {
         this.setActivationVisible(true);
         this.setTone('active');
@@ -362,9 +368,10 @@
     if (state !== 'offline') S.show(this.expiredOverlay, state === 'expired');
     if (state === 'expired') {
       this.expiredCode.textContent = Portal.identity ? Portal.deviceCode() : '';
-      this.expiredInfo.textContent = 'A ativação é verificada automaticamente a cada ' + PENDING_POLL + ' segundos.';
+      this.expiredInfo.textContent = 'Use Verificar ativação ou reabra o aplicativo após renovar.';
     }
-    this.licenseTimer.seconds = PENDING_POLL; if (this.licenseTimer.running()) this.licenseTimer.start();
+    this.licenseTimer.seconds = PENDING_POLL;
+    if (!this.shell.authenticated && state !== 'blocked' && state !== 'expired') this.licenseTimer.start(); else this.licenseTimer.stop();
     if (state === 'expired' || state === 'blocked') {
       this.shell.authenticated = false;
       this.shell.catalogToken = {};
@@ -500,3 +507,4 @@
 
   EP.MainScene = MainScene;
 }(window.EP));
+
