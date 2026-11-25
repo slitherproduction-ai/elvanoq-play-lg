@@ -30,7 +30,7 @@ if (manifest) {
 
 // Todos os scripts e estilos referenciados pelo index.html precisam existir e compilar.
 const html = existsSync(resolve(root, 'index.html')) ? readFileSync(resolve(root, 'index.html'), 'utf8') : '';
-const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1]);
+const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1].split('?')[0]);
 const styles = [...html.matchAll(/<link[^>]+href="([^"]+\.css)"/g)].map((m) => m[1]);
 if (!scripts.length) errors.push('index.html não referencia nenhum script.');
 // Tamanhos exigidos pelo webOS: ícone 80x80, ícone grande 130x130, splash 1920x1080 (PNG).
@@ -54,7 +54,7 @@ for (const script of scripts) {
 for (const asset of ['images/elvanoq-wordmark-white.png', 'images/elvanoq-login-tv-backdrop.jpg', 'images/elvanoq-logo-tagline.png', 'images/splash.jpg', 'fonts/Inter-Regular.woff', 'fonts/Inter-Medium.woff', 'fonts/Inter-SemiBold.woff', 'fonts/Inter-Bold.woff']) requireFile(asset);
 
 // Testes de regras
-for (const test of ['tests/home-rails.test.cjs', 'tests/playlist-sync.test.cjs', 'tests/epg-and-stream.test.cjs', 'tests/v110-features.test.cjs', 'tests/live-search.test.cjs', 'tests/v113-features.test.cjs', 'tests/v117-features.test.cjs', 'tests/open-timeout.test.cjs', 'tests/open-speed.test.cjs', 'tests/recent-titles.test.cjs', 'tests/sources-clock.test.cjs', 'tests/recent-defer.test.cjs', 'tests/connection-diagnosis.test.cjs']) {
+for (const test of ['tests/home-rails.test.cjs', 'tests/playlist-sync.test.cjs', 'tests/epg-and-stream.test.cjs', 'tests/v110-features.test.cjs', 'tests/live-search.test.cjs', 'tests/v113-features.test.cjs', 'tests/v117-features.test.cjs', 'tests/open-timeout.test.cjs', 'tests/open-speed.test.cjs', 'tests/recent-titles.test.cjs', 'tests/sources-clock.test.cjs', 'tests/recent-defer.test.cjs', 'tests/connection-diagnosis.test.cjs', 'tests/telemetry.test.cjs']) {
   const result = spawnSync(process.execPath, [resolve(root, test)], { encoding: 'utf8' });
   if (result.status !== 0) errors.push(test + ' falhou:\n' + (result.stderr || result.stdout).trim());
 }
