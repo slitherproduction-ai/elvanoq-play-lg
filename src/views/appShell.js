@@ -527,6 +527,8 @@
       self.refreshCurrent(false);
       if (self.app.licenseState === 'blocked' || self.app.licenseState === 'expired') return;
       self.authenticated = true;
+      // Acesso por código: só fica salvo depois que a lista abriu de verdade.
+      if (playlist.origin === 'manual-code' && Portal.rememberCodeLogin) Portal.rememberCodeLogin();
       self.app.setActivationVisible(false);
       self.show(true);
       if (self.app.welcomeView && self.app.welcomeView.active) self.app.welcomeView.finish(self.welcomeCounts());

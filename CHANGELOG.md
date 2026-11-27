@@ -1,3 +1,9 @@
+# 1.2.4 — 2026-11-27
+
+- **Lembrar o acesso por código do servidor** (igual às versões MSX 1.2.10 e Samsung Tizen 1.2.5): usuário e senha do acesso por código ficavam só em memória, então ao fechar e abrir o app o "Bem-vindo de volta" aparecia e voltava para o login. Agora ficam salvos nesta TV (`code_login` no `EP.Registry`) **depois que a lista abre de verdade**. Na abertura (`MainScene.resumeCodeLogin`) o código é conferido de novo no Portal: se a revenda cancelou, o acesso é apagado e a tela de login explica o motivo; se o Portal estiver fora do ar (0, 429, 5xx), entra com o servidor salvo. "Excluir login" em Ajustes apaga.
+- Teste novo: `tests/code-login-remember.test.cjs`.
+- Ajustes › Sobre (Novidades): entrada da tela Bem-vindo de volta (faltava desde a versão que a trouxe) e textos em inglês das novidades do acesso por código e do Bem-vindo.
+
 # 1.2.3 — 2026-11-25
 
 - **Bem-vindo de volta** (design aprovado no canvas, `src/views/welcomeView.js`): TV já licenciada e com lista salva abre direto nesta tela, centralizada no fundo do login, enquanto confere a licença, conecta no servidor da lista e carrega o catálogo. Carregamento premium em volta do símbolo do ELVANOQ Play (`images/elvanoq-mark.png`): anel de progresso que avança com as etapas reais, cometa com rastro, órbita pontilhada e satélite; saudação pela hora, nome da lista, etapa atual, totais no fim ("Tudo pronto") e dicas que trocam sozinhas. Esmaece para a Início. Licença negada/pendente, sem lista no Portal, falha de sincronização ou servidor IPTV recusando: some e a ativação/janela "A lista não abriu" aparecem como antes; trava de 60 s. Voltar sai do app. Substitui o aviso antigo de 1,2 s. Novo teste `tests/welcome-back.test.cjs`; `?v=welcome-1` no CSS e nos scripts alterados.

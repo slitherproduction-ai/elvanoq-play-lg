@@ -10,6 +10,7 @@
   /* Chaves herdadas da versão 0.4.0: mantidas para a TV continuar vinculada. */
   var IDENTITY_KEY = 'elvanoq-lg-device-identity-v1';
   var PLAYLISTS_KEY = 'elvanoq-lg-playlists-v1';
+  var CODE_LOGIN_KEY = 'code_login';
 
   function readLegacy(key) { try { return JSON.parse(window.localStorage.getItem(key)); } catch (_) { return null; } }
   function writeLegacy(key, value) { try { window.localStorage.setItem(key, JSON.stringify(value)); } catch (_) {} }
@@ -191,9 +192,24 @@
 
     playlists: function () { var v = readLegacy(PLAYLISTS_KEY); return v && v.length !== undefined ? v : []; },
     portalPlaylist: function () { return EP.find(Portal.playlists(), function (p) { return p && p.origin === 'portal-webos'; }); },
-    /* Como no Roku, o acesso por código do servidor fica só em memória:
-     * usuário e senha digitados nunca são gravados na TV. */
+    /* Acesso por código do servidor. 1.2.10 (pedido em 27/11): fica salvo
+     * nesta TV depois que a lista abre, para o "Bem-vindo de volta" entrar
+     * sozinho. Na abertura o código é conferido de novo no Portal (a revenda
+     * continua podendo cancelar). "Excluir login" em Ajustes apaga. */
     manual: null,
+    pendingCodeLogin: null,
+    savedCodeLogin: function () {
+      var s = EP.Registry.readJson(CODE_LOGIN_KEY, null);
+      if (!s || typeof s !== 'object') return null;
+      var ok = function (v, max) { return typeof v === 'string' && v.length > 0 && v.length <= max; };
+      return ok(s.code, 32) && ok(s.username, 200) && ok(s.password, 200) ? s : null;
+    },
+    rememberCodeLogin: function () {
+      if (!Portal.pendingCodeLogin) return;
+      EP.Registry.writeJson(CODE_LOGIN_KEY, Portal.pendingCodeLogin);
+      Portal.pendingCodeLogin = null;
+    },
+    forgetCodeLogin: function () { EP.Registry.remove(CODE_LOGIN_KEY); Portal.pendingCodeLogin = null; },
     useManualPlaylist: function (entry) {
       Portal.manual = EP.extend({ id: 'manual-code', sourceId: 'manual-code', origin: 'manual-code' }, entry);
       return Portal.manual;
