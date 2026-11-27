@@ -4,7 +4,7 @@
   'use strict';
   EP.I18N_EN = {
     "Quem entra pelo código do servidor não precisa digitar de novo: o Bem-vindo de volta entra sozinho na lista.": "If you sign in with the server code you don't need to type it again: Welcome back goes straight into your list.",
-    "Nova tela Bem-vindo de volta: ao abrir com a lista ativa, uma animação em volta do símbolo do ELVANOQ Play mostra as etapas (licença, servidor e catálogo) e entra sozinha no Início.": "New Welcome back screen: when you open the app with an active list, an animation around the ELVANOQ Play symbol shows the steps (license, server and catalog) and goes into Home by itself.",
+    "Nova tela Bem-vindo de volta, com animação enquanto a lista carrega e entrada automática no Início.": "New Welcome back screen, with an animation while the list loads and automatic entry into Home.",
     "Bom dia,": "Good morning,",
     "Boa tarde,": "Good afternoon,",
     "Boa noite,": "Good evening,",

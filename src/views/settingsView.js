@@ -276,7 +276,7 @@
   /* ---------- Sobre ---------- */
   var NEWS = [
     'Quem entra pelo código do servidor não precisa digitar de novo: o Bem-vindo de volta entra sozinho na lista.',
-    'Nova tela Bem-vindo de volta: ao abrir com a lista ativa, uma animação em volta do símbolo do ELVANOQ Play mostra as etapas (licença, servidor e catálogo) e entra sozinha no Início.',
+    'Nova tela Bem-vindo de volta, com animação enquanto a lista carrega e entrada automática no Início.',
     'Novidades para você mostra os lançamentos da sua lista (categoria de lançamentos do servidor).',
     'Canais abrem na hora a partir da prévia, sem nova conexão; e o Desempenho mostra quanto cada vídeo demorou para abrir.',
     'Avance e volte filmes com ◀/▶ na barra de tempo, mais rápido ao apertar seguido.',
@@ -298,7 +298,8 @@
     S.label(this.root, { x: 112, y: 632, w: 776, h: 30, size: 20, color: '0x00D7FFFF', text: 'elvanoqplay.app' });
     groupLabel(this.root, 992, 176, 'Novidades da ' + EP.VERSION);
     S.el(this.root, { x: 984, y: 210, w: 872, h: 486, className: 'premium-card' });
-    for (var i = 0; i < NEWS.length; i++) {
+    // Só as 6 mais recentes cabem no cartão (as demais passavam por cima de Privacidade).
+    for (var i = 0; i < NEWS.length && i < 6; i++) {
       S.el(this.root, { x: 1024, y: 252 + i * 72, w: 10, h: 10, css: 'border-radius:5px;background:#00d7ff' });
       S.label(this.root, { x: 1052, y: 238 + i * 72, w: 772, h: 64, size: 21, lineHeight: 30, lines: 2, text: NEWS[i] });
     }
