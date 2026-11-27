@@ -130,7 +130,35 @@
       return;
     }
     this.startWelcome();
+    this.resumeCodeLogin();
     this.connect();
+  };
+
+  /* Acesso por código salvo nesta TV: confere o código no Portal e entra na
+   * lista sem pedir nada (o "Bem-vindo de volta" fica na tela enquanto isso). */
+  MainScene.prototype.resumeCodeLogin = function () {
+    var saved = Portal.savedCodeLogin(), self = this;
+    if (!saved) return;
+    this.manualSession = true;
+    Portal.serverCodeResolve(saved.code).then(function (r) {
+      if (self.codeLoginActive || !self.manualSession) return; // começou outro login
+      var temporary = !r.ok && (r.status === 0 || r.status === 429 || r.status >= 500);
+      var host = r.ok ? r.host : (temporary ? EP.text(saved.host) : '');
+      if (!host) {
+        Portal.forgetCodeLogin();
+        Portal.manual = null;
+        self.manualSession = false;
+        self.endWelcome();
+        self.setActivationVisible(true);
+        self.setTone('error');
+        self.status.textContent = r.ok ? 'O Portal não retornou um servidor compatível. Entre novamente com o código do servidor.' : (r.message || 'O acesso por código não vale mais. Entre novamente com o código do servidor.');
+        self.checkLicense();
+        return;
+      }
+      var playlist = Portal.useManualPlaylist({ name: 'Acesso por código', sourceType: 'xtream', credentials: { host: host, username: saved.username, password: saved.password } });
+      Portal.pendingCodeLogin = { code: saved.code, host: host, username: saved.username, password: saved.password };
+      self.shell.applyPlaylist({ display_name: 'Acesso por código', server_code: saved.code, playlist: playlist });
+    });
   };
 
   MainScene.prototype.updateIdentity = function () {
@@ -253,6 +281,7 @@
         self.licenseTimer.stop();
         self.shell.stopPlayback();
         Portal.manual = null;
+        Portal.forgetCodeLogin();
         EP.Parental.clearSession();
         EP.Registry.remove('playlist_metadata');
         EP.Registry.write('login_removed', 'true');
@@ -333,7 +362,8 @@
 
   MainScene.prototype.showActivationState = function (state, message) {
     this.licenseState = state === 'offline' && this.licenseState === 'active' ? 'active' : state;
-    if (this.welcomeView && this.welcomeView.active) { if (state === 'active') this.welcomeView.setStep(1); else if (!this.shell.isVisible()) this.endWelcome(); }
+    // Acesso por código salvo: a licença do Portal não encerra o Bem-vindo enquanto a lista abre.
+    if (this.welcomeView && this.welcomeView.active) { if (state === 'active') this.welcomeView.setStep(1); else if (!this.shell.isVisible() && !this.manualSession) this.endWelcome(); }
     if (state === 'active') {
       S.show(this.expiredOverlay, false);
       this.licenseTimer.stop(); // No license polling during an authorized session.
@@ -432,7 +462,7 @@
     return this.dialog;
   };
 
-  /* Login por código do servidor: código -> usuário -> senha (só em memória). */
+  /* Login por código do servidor: código -> usuário -> senha (salvo na TV depois que a lista abre). */
   MainScene.prototype.cancelServerCodeLogin = function () {
     this.codeLoginActive = false;
     if (this.dialog && !this.dialog.closed) this.dialog.close();
@@ -483,6 +513,7 @@
           onButton: function (i, password) {
             if (i !== 0 || !password) { self.cancelServerCodeLogin(); return; }
             var playlist = Portal.useManualPlaylist({ name: 'Acesso por código', sourceType: 'xtream', credentials: { host: host, username: username, password: password } });
+            Portal.pendingCodeLogin = { code: code, host: host, username: username, password: password };
             EP.Registry.remove('login_removed');
             self.codeLoginActive = false;
             self.manualSession = true;
