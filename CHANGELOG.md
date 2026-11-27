@@ -3,6 +3,7 @@
 - **Lembrar o acesso por código do servidor** (igual às versões MSX 1.2.10 e Samsung Tizen 1.2.5): usuário e senha do acesso por código ficavam só em memória, então ao fechar e abrir o app o "Bem-vindo de volta" aparecia e voltava para o login. Agora ficam salvos nesta TV (`code_login` no `EP.Registry`) **depois que a lista abre de verdade**. Na abertura (`MainScene.resumeCodeLogin`) o código é conferido de novo no Portal: se a revenda cancelou, o acesso é apagado e a tela de login explica o motivo; se o Portal estiver fora do ar (0, 429, 5xx), entra com o servidor salvo. "Excluir login" em Ajustes apaga.
 - Teste novo: `tests/code-login-remember.test.cjs`.
 - Ajustes › Sobre (Novidades): entrada da tela Bem-vindo de volta (faltava desde a versão que a trouxe) e textos em inglês das novidades do acesso por código e do Bem-vindo.
+- Ajustes › Sobre: o cartão de Novidades mostra só as 6 mais recentes (as demais passavam por cima de Privacidade) e o texto do Bem-vindo de volta ficou mais curto, sem cortar.
 
 # 1.2.3 — 2026-11-25
 
