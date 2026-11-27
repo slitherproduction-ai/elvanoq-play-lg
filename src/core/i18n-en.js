@@ -3,6 +3,8 @@
 (function (EP) {
   'use strict';
   EP.I18N_EN = {
+    "DNS seguro: se a sua internet não encontrar o servidor da lista, a TV descobre o endereço pelo Google, pela Cloudflare ou pelo Portal e conecta mesmo assim.": "Secure DNS: if your internet can't find your list's server, the TV looks up its address through Google, Cloudflare or the Portal and connects anyway.",
+    "Tentando pelo DNS seguro…": "Trying via secure DNS…",
     "Quem entra pelo código do servidor não precisa digitar de novo: o Bem-vindo de volta entra sozinho na lista.": "If you sign in with the server code you don't need to type it again: Welcome back goes straight into your list.",
     "Nova tela Bem-vindo de volta, com animação enquanto a lista carrega e entrada automática no Início.": "New Welcome back screen, with an animation while the list loads and automatic entry into Home.",
     "Bom dia,": "Good morning,",

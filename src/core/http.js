@@ -24,8 +24,29 @@
     });
   }
 
+  /* DNS seguro (EP.Dns, src/core/dns.js): com o host marcado vai pelo IP; numa
+   * falha de rede pelo caminho normal, repete pelo IP antes de desistir (ou de
+   * usar o relay). Só troca o endereço consultado: a conexão sai da TV. */
+  function dnsGet(url, timeout) {
+    var D = EP.Dns;
+    if (!D || !D.eligible(url)) return request('GET', url, { timeout: timeout });
+    if (D.shouldUseIp(url)) {
+      return D.rewrite(url).then(function (r) {
+        if (!r) return request('GET', url, { timeout: timeout });
+        return request('GET', r.url, { timeout: timeout }).then(null, function () { return request('GET', url, { timeout: timeout }); });
+      });
+    }
+    return request('GET', url, { timeout: timeout }).then(null, function (error) {
+      if (error && error.message === 'timeout') throw error;
+      return D.rewrite(url).then(function (r) {
+        if (!r) throw error;
+        return request('GET', r.url, { timeout: timeout }).then(function (resp) { D.markWorked(url, r.source); return resp; }, function () { throw error; });
+      });
+    });
+  }
+
   EP.Http = {
-    get: function (url, timeout) { return request('GET', url, { timeout: timeout }); },
+    get: function (url, timeout) { return dnsGet(url, timeout); },
     postJson: function (url, payload, headers, timeout) {
       return request('POST', url, { timeout: timeout, headers: EP.extend({ 'Content-Type': 'application/json', Accept: 'application/json' }, headers), body: JSON.stringify(payload) });
     },

@@ -1,3 +1,12 @@
+# 1.2.5 — 2026-11-27
+
+- **DNS seguro** (anti-bloqueio de DNS da operadora; especificação `claude/dns-alternativo.md` do Projeto). Novo `src/core/dns.js` (`EP.Dns`, ES5): quando um pedido `http://` à lista falha por erro de rede, a TV pergunta o IP ao Google (`https://8.8.8.8/resolve`), à Cloudflare (`https://1.1.1.1/dns-query`) e ao Portal (função `dns-resolve`), descarta respostas de bloqueio (`0.0.0.0`, `127.x`) e repete o mesmo endereço pelo IP; se funcionar, o servidor fica marcado por 6 h (cache em `localStorage`). `EP.Http.get` (`src/core/http.js`) tenta pelo IP antes de desistir. Pedido do dono do servidor: nada passa por servidor de terceiros, a conexão sai da TV.
+- **Player** (`src/views/playerView.js`): servidor marcado abre direto pelo IP; numa falha de abertura, antes da tela de erro, uma tentativa "Tentando pelo DNS seguro…" pelo IP (uma vez por conteúdo).
+- Limites: só `http://` (em HTTPS o certificado não bate com o IP); o navegador não deixa enviar o cabeçalho `Host`, então só funciona com painéis que aceitam acesso pelo IP. Modo em `localStorage` `ep.dnsMode` (auto/google/cloudflare/off); a linha em Ajustes fica para quando houver espaço no design aprovado (a central já tem 10 linhas).
+- Telemetria: o desvio aparece como `source_switch` com detalhe `dns:<provedor>`.
+- Teste novo: `tests/dns-seguro.test.cjs`. `?v=` novo em `http.js`, `dns.js`, `playerView.js`, `settingsView.js` e `i18n-en.js`.
+- LG webOS 1.2.5.
+
 # 1.2.4 — 2026-11-27
 
 - **Lembrar o acesso por código do servidor** (igual às versões MSX 1.2.10 e Samsung Tizen 1.2.5): usuário e senha do acesso por código ficavam só em memória, então ao fechar e abrir o app o "Bem-vindo de volta" aparecia e voltava para o login. Agora ficam salvos nesta TV (`code_login` no `EP.Registry`) **depois que a lista abre de verdade**. Na abertura (`MainScene.resumeCodeLogin`) o código é conferido de novo no Portal: se a revenda cancelou, o acesso é apagado e a tela de login explica o motivo; se o Portal estiver fora do ar (0, 429, 5xx), entra com o servidor salvo. "Excluir login" em Ajustes apaga.

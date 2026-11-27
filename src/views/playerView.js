@@ -162,6 +162,7 @@
 
   PlayerView.prototype.onPlaying = function () {
     var v = this.video;
+    if (this.dnsPending && EP.Dns) { EP.Dns.markWorked(this.dnsPending.original, this.dnsPending.source); this.dnsPending = null; }
     this.hideOpeningCover();
     if (this.loadToken) this.loadToken.started = true;
     this.clearOpenTimeout();
@@ -240,6 +241,7 @@
     this.liveRetries = 0;
     this.seekTimer.stop(); this.seekTarget = -1; this.setTimelineFocus(false);
     this.rawCredentialTried = false;
+    this.dnsTried = false; this.dnsPending = null;
     this.catchupIndex = 0;
     // Filme/episódio retomado começa direto no ponto salvo (antes de bufferizar
     // o início): o salto é feito no loadedmetadata, como o PlayStart do Roku.
@@ -270,6 +272,8 @@
 
   PlayerView.prototype.load = function (url) {
     var v = this.video;
+    // DNS seguro: servidor que já precisou do IP abre direto pelo IP (EP.Dns).
+    if (EP.Dns) url = EP.Dns.cachedUrl(url);
     this.currentUrl = url;
     this.loadAt = Date.now(); this.waitingAt = 0;
     // Libera o decoder da TV antes de trocar a fonte: pause, sem src, load().
@@ -385,6 +389,22 @@
     }
     // Última tentativa: usuário e senha sem codificação na URL (painéis que não
     // aceitam %40, %2B etc.). Só uma vez por conteúdo.
+    // DNS seguro: o DNS da operadora pode não estar encontrando o servidor.
+    // Uma vez por conteúdo, pergunta o IP (Google, Cloudflare ou Portal) e
+    // abre o mesmo endereço pelo IP. A conexão continua saindo da TV.
+    if (!this.dnsTried && EP.Dns && EP.Dns.eligible(this.currentUrl) && !EP.Dns.shouldUseIp(this.currentUrl)) {
+      this.dnsTried = true;
+      var original = this.currentUrl, content = this.content;
+      this.hint.textContent = 'Tentando pelo DNS seguro…';
+      this.showOsd();
+      EP.Dns.rewrite(original).then(function (r) {
+        if (self.content !== content) return;
+        if (!r) { self.onError(); return; }
+        self.dnsPending = { original: original, source: r.source };
+        self.load(r.url);
+      });
+      return;
+    }
     var raw = !this.rawCredentialTried && F.rawCredentialVariant(this.currentUrl);
     if (raw) {
       this.rawCredentialTried = true;

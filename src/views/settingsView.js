@@ -275,6 +275,7 @@
 
   /* ---------- Sobre ---------- */
   var NEWS = [
+    'DNS seguro: se a sua internet não encontrar o servidor da lista, a TV descobre o endereço pelo Google, pela Cloudflare ou pelo Portal e conecta mesmo assim.',
     'Quem entra pelo código do servidor não precisa digitar de novo: o Bem-vindo de volta entra sozinho na lista.',
     'Nova tela Bem-vindo de volta, com animação enquanto a lista carrega e entrada automática no Início.',
     'Novidades para você mostra os lançamentos da sua lista (categoria de lançamentos do servidor).',
