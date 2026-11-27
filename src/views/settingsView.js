@@ -276,6 +276,7 @@
   /* ---------- Sobre ---------- */
   var NEWS = [
     'Quem entra pelo código do servidor não precisa digitar de novo: o Bem-vindo de volta entra sozinho na lista.',
+    'Nova tela Bem-vindo de volta: ao abrir com a lista ativa, uma animação em volta do símbolo do ELVANOQ Play mostra as etapas (licença, servidor e catálogo) e entra sozinha no Início.',
     'Novidades para você mostra os lançamentos da sua lista (categoria de lançamentos do servidor).',
     'Canais abrem na hora a partir da prévia, sem nova conexão; e o Desempenho mostra quanto cada vídeo demorou para abrir.',
     'Avance e volte filmes com ◀/▶ na barra de tempo, mais rápido ao apertar seguido.',
